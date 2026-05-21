@@ -466,13 +466,13 @@
 
 <div class="api-panel">
   <label>BASE URL</label>
-  <input type="text" id="inp-url" placeholder="https://api.saipos.com/v1" value="https://api.saipos.com/v1">
+  <input type="text" id="inp-url" placeholder="https://dados-api.saipos.com.br" value="https://dados-api.saipos.com.br">
   <label>TOKEN</label>
-  <input type="password" id="inp-token" placeholder="Bearer token Saipos…">
+  <input type="password" id="inp-token" placeholder="Bearer token Saipos (começa com eyJ...)" title="Cole o token JWT completo que a Saipos enviou">
   <label>LOJA ID</label>
-  <input type="text" id="inp-store" placeholder="store_id" style="max-width:130px">
-  <button class="btn btn-primary" onclick="fetchRealData()">▶ CONECTAR</button>
-  <button class="btn btn-ghost" onclick="loadDemoData()">★ DEMO</button>
+  <input type="text" id="inp-store" placeholder="76472" value="76472" style="max-width:130px" title="Seu Store ID (Menu > Dados da Loja > Código)">
+  <button class="btn btn-primary" onclick="fetchRealData()" title="Conecta à API Saipos real">▶ CONECTAR</button>
+  <button class="btn btn-ghost" onclick="loadDemoData()" title="Carrega dados de exemplo">★ DEMO</button>
 
   <div class="period-tabs">
     <button class="tab-btn active" onclick="setPeriod('today',this)">HOJE</button>
@@ -1172,52 +1172,72 @@ async function fetchRealData() {
   const storeId = document.getElementById('inp-store').value.trim();
 
   if (!token) { alert('Informe o Bearer Token Saipos'); return; }
+  if (!storeId) { alert('Informe o Store ID da loja'); return; }
 
-  document.getElementById('api-badge').innerHTML = '<span class="spinner"></span> CARREGANDO';
+  document.getElementById('api-badge').innerHTML = '<span class="spinner"></span> TESTANDO...';
   document.getElementById('api-badge').className = 'api-badge demo';
 
   try {
-    // === ENDPOINT SAIPOS ===
-    // A Saipos usa o padrão Open Delivery (Abrasel).
-    // Endpoint de pedidos: GET /orders  (com filtros de data e store_id)
-    // Ajuste os parâmetros conforme a documentação da sua conta em:
-    // https://saipos-docs-order-api.readme.io
-
     const since = new Date();
     since.setDate(since.getDate() - 28);
-    const params = new URLSearchParams({
-      store_id: storeId,
-      created_at_gte: since.toISOString(),
-      limit: 500,
-      status: 'CONCLUDED'
-    });
-
-    const resp = await fetch(`${baseUrl}/orders?${params}`, {
+    
+    // API DE DADOS Saipos (https://saipos-data-api.readme.io)
+    // Endpoint: /orders ou /v1/orders
+    // Autenticação: Bearer Token (JWT)
+    let url = `${baseUrl}/orders`;
+    console.log(`[Saipos Data API] URL: ${url}`);
+    console.log(`[Saipos Data API] Store ID: ${storeId}`);
+    
+    const resp = await fetch(url, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'X-Store-Id': storeId
       }
     });
 
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+    console.log(`[Saipos Data API] Status HTTP: ${resp.status}`);
+    
+    if (resp.status === 401) {
+      throw new Error('❌ TOKEN INVÁLIDO ou EXPIRADO\n\n✓ Copie novamente do Menu > Canais de Vendas e Integrações > API DE DADOS\n✓ Tokens têm data de validade');
+    }
+    if (resp.status === 403) {
+      throw new Error('❌ ACESSO NEGADO\n\n✓ Sua conta pode não ter permissão para API de Dados\n✓ Contate suporte@saipos.com');
+    }
+    if (resp.status === 404) {
+      throw new Error('❌ ENDPOINT NÃO ENCONTRADO\n\n✓ URL correta: https://dados-api.saipos.com.br\n✓ Endpoints: /orders ou /v1/orders');
+    }
+    if (!resp.ok) {
+      const txt = await resp.text();
+      console.error('[Saipos Data API] Response text:', txt);
+      throw new Error(`HTTP ${resp.status}\n\n${txt.substring(0,300)}`);
+    }
+    
     const json = await resp.json();
-
-    // Saipos retorna array em `orders` ou diretamente como array
+    console.log('[Saipos Data API] Response:', json);
+    
     const raw = json.orders ?? json.data ?? json ?? [];
-    state.orders = raw.map(mapSaiposOrder).filter(Boolean);
+    state.orders = (Array.isArray(raw) ? raw : [raw])
+      .map(mapSaiposOrder)
+      .filter(Boolean);
 
-    if (!state.orders.length) throw new Error('Nenhum pedido retornado. Verifique o store_id e o período.');
+    if (!state.orders.length) {
+      throw new Error('⚠️ Sem pedidos retornados\n\n✓ Verifique se há pedidos nos últimos 28 dias\n✓ Tente ampliar o período (clique em "MÊS")');
+    }
 
     state.isLive = true;
     document.getElementById('api-badge').textContent = '● LIVE';
     document.getElementById('api-badge').className = 'api-badge live';
+    console.log(`[Saipos Data API] ✓ ${state.orders.length} pedidos carregados com sucesso!`);
     render();
 
   } catch (err) {
+    console.error('[Saipos Data API Error]', err);
     document.getElementById('api-badge').textContent = '● ERRO';
     document.getElementById('api-badge').className = 'api-badge demo';
-    alert(`Erro ao conectar com a API Saipos:\n\n${err.message}\n\nVerifique URL, token e store_id.\nCarregando dados demo.`);
+    alert(`⚠️ ERRO NA API DE DADOS\n\n${err.message}\n\nDica: Abra DevTools (F12) → Console para mais detalhes.\nCarregando DEMO...`);
     loadDemoData();
   }
 }
