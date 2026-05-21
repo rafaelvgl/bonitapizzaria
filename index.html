@@ -466,7 +466,7 @@
 
 <div class="api-panel">
   <label>BASE URL</label>
-  <input type="text" id="inp-url" placeholder="https://dados-api.saipos.com.br" value="https://dados-api.saipos.com.br">
+  <input type="text" id="inp-url" placeholder="https://data.saipos.io/v1" value="https://data.saipos.io/v1">
   <label>TOKEN</label>
   <input type="password" id="inp-token" placeholder="Bearer token Saipos (começa com eyJ...)" title="Cole o token JWT completo que a Saipos enviou">
   <label>LOJA ID</label>
@@ -1182,7 +1182,8 @@ async function fetchRealData() {
     since.setDate(since.getDate() - 28);
     
     // API DE DADOS Saipos (https://saipos-data-api.readme.io)
-    // Endpoint: /orders ou /v1/orders
+    // URL Base: https://data.saipos.io/v1
+    // Endpoint: /orders
     // Autenticação: Bearer Token (JWT)
     let url = `${baseUrl}/orders`;
     console.log(`[Saipos Data API] URL: ${url}`);
@@ -1207,7 +1208,7 @@ async function fetchRealData() {
       throw new Error('❌ ACESSO NEGADO\n\n✓ Sua conta pode não ter permissão para API de Dados\n✓ Contate suporte@saipos.com');
     }
     if (resp.status === 404) {
-      throw new Error('❌ ENDPOINT NÃO ENCONTRADO\n\n✓ URL correta: https://dados-api.saipos.com.br\n✓ Endpoints: /orders ou /v1/orders');
+      throw new Error('❌ ENDPOINT NÃO ENCONTRADO\n\n✓ URL base correta: https://data.saipos.io/v1\n✓ Endpoint: /orders');
     }
     if (!resp.ok) {
       const txt = await resp.text();
