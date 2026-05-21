@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PizzaMetrics — Dashboard de Tempos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --accent: #ff4500;
+    --accent2: #ff8c00;
+    --accent3: #ffd700;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+    --text: #e8e8e8;
+    --muted: #666;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --display: 'Bebas Neue', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+
+  /* ──── HEADER ──── */
+  header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    font-family: var(--display);
+    font-size: 1.8rem;
+    letter-spacing: 3px;
+    color: var(--accent);
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+  .logo span { color: var(--text); }
+  .logo-sub {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-top: -4px;
+  }
+  .header-right {
+    display: flex; align-items: center; gap: 1rem;
+  }
+  #live-clock {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .api-badge {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 2px;
+    border: 1px solid;
+  }
+  .api-badge.demo { border-color: var(--warn); color: var(--warn); }
+  .api-badge.live { border-color: var(--ok); color: var(--ok); }
+
+  /* ──── API CONFIG PANEL ──── */
+  .api-panel {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 0.8rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .api-panel label {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .api-panel input[type="text"],
+  .api-panel input[type="password"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    border-radius: 3px;
+    flex: 1; min-width: 160px; max-width: 320px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .api-panel input:focus { border-color: var(--accent); }
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 7px 16px;
+    border: none; border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #e03d00; }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .period-tabs {
+    display: flex; gap: 4px; margin-left: auto;
+  }
+  .tab-btn {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 5px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all .15s;
+    letter-spacing: 1px;
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* ──── MAIN LAYOUT ──── */
+  main { padding: 1.5rem 2rem; }
+
+  /* ──── KPI CARDS ──── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--border);
+    padding: 1.2rem 1.4rem;
+    position: relative;
+    overflow: hidden;
+    transition: transform .15s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .kpi-card.accent-red { border-top-color: var(--accent); }
+  .kpi-card.accent-orange { border-top-color: var(--accent2); }
+  .kpi-card.accent-gold { border-top-color: var(--accent3); }
+  .kpi-card.accent-green { border-top-color: var(--ok); }
+  .kpi-card.accent-blue { border-top-color: #60a5fa; }
+  .kpi-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .kpi-value {
+    font-family: var(--display);
+    font-size: 2.4rem;
+    line-height: 1;
+    letter-spacing: 1px;
+  }
+  .kpi-unit {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .kpi-delta {
+    position: absolute;
+    top: 1.2rem; right: 1rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+  .kpi-delta.up { background: rgba(239,68,68,.15); color: var(--bad); }
+  .kpi-delta.down { background: rgba(34,197,94,.15); color: var(--ok); }
+  .kpi-delta.neutral { background: rgba(255,255,255,.05); color: var(--muted); }
+
+  /* ──── STATUS BAR ──── */
+  .sla-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .sla-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .sla-progress-group { flex: 1; min-width: 200px; }
+  .sla-progress-label {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 0.7rem;
+    color: var(--text); margin-bottom: 4px;
+  }
+  .sla-progress-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .sla-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .8s ease;
+  }
+  .fill-ok { background: var(--ok); }
+  .fill-warn { background: var(--warn); }
+  .fill-bad { background: var(--bad); }
+
+  /* ──── CHARTS GRID ──── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.2rem;
+    position: relative;
+  }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title {
+    font-family: var(--display);
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+  }
+  .chart-subtitle {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+  }
+  .chart-container { position: relative; height: 240px; }
+  .chart-container.tall { height: 300px; }
+
+  /* ──── WEEKDAY COMPARISON ──── */
+  .weekday-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-bottom: 1.5rem;
+  }
+  .wd-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.8rem 0.6rem;
+    text-align: center;
+  }
+  .wd-name {
+    font-family: var(--display);
+    font-size: 1rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  .wd-name.today { color: var(--accent); }
+  .wd-time {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    margin-bottom: 3px;
+  }
+  .wd-bar {
+    height: 4px;
+    border-radius: 2px;
+    margin: 4px 0;
+  }
+  .wd-orders {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  /* ──── HEAT MAP ──── */
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: auto repeat(24, 1fr);
+    gap: 2px;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+  }
+  .hm-header {
+    color: var(--muted);
+    text-align: center;
+    padding: 2px 0;
+  }
+  .hm-row-label {
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    padding-right: 6px;
+    white-space: nowrap;
+  }
+  .hm-cell {
+    height: 22px;
+    border-radius: 2px;
+    cursor: default;
+    transition: opacity .15s;
+    position: relative;
+  }
+  .hm-cell:hover { opacity: .7; outline: 1px solid #fff3; }
+  .hm-cell[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 120%; left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    border: 1px solid var(--border);
+    padding: 3px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+    z-index: 10;
+    font-size: 0.6rem;
+    color: var(--text);
+    pointer-events: none;
+  }
+
+  /* ──── TABLE ──── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+  }
+  thead tr {
+    border-bottom: 2px solid var(--border);
+  }
+  th {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  th:hover { color: var(--accent); }
+  td {
+    padding: 0.55rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:hover td { background: var(--surface2); }
+  .pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 2px;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+  }
+  .pill-ok { background: rgba(34,197,94,.15); color: var(--ok); border: 1px solid rgba(34,197,94,.3); }
+  .pill-warn { background: rgba(245,158,11,.15); color: var(--warn); border: 1px solid rgba(245,158,11,.3); }
+  .pill-bad { background: rgba(239,68,68,.15); color: var(--bad); border: 1px solid rgba(239,68,68,.3); }
+
+  /* ──── LOADING / ERROR ──── */
+  .status-msg {
+    text-align: center;
+    padding: 3rem;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ──── FOOTER ──── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  @media (max-width: 900px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .charts-grid .chart-card.full { grid-column: 1; }
+    .weekday-grid { grid-template-columns: repeat(4, 1fr); }
+    .api-panel { flex-direction: column; align-items: flex-start; }
+    .period-tabs { margin-left: 0; }
+  }
+  @media (max-width: 600px) {
+    main { padding: 1rem; }
+    header { padding: 0 1rem; }
+    .weekday-grid { grid-template-columns: repeat(2, 1fr); }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">🍕 <span>Pizza</span>METRICS</div>
+    <div class="logo-sub">ANÁLISE DE TEMPOS OPERACIONAIS</div>
+  </div>
+  <div class="header-right">
+    <div id="live-clock">--:--:--</div>
+    <div id="api-badge" class="api-badge demo">● DEMO</div>
+  </div>
+</header>
+
+<div class="api-panel">
+  <label>BASE URL</label>
+  <input type="text" id="inp-url" placeholder="https://api.saipos.com/v1" value="https://api.saipos.com/v1">
+  <label>TOKEN</label>
+  <input type="password" id="inp-token" placeholder="Bearer token Saipos…">
+  <label>LOJA ID</label>
+  <input type="text" id="inp-store" placeholder="store_id" style="max-width:130px">
+  <button class="btn btn-primary" onclick="fetchRealData()">▶ CONECTAR</button>
+  <button class="btn btn-ghost" onclick="loadDemoData()">★ DEMO</button>
+
+  <div class="period-tabs">
+    <button class="tab-btn active" onclick="setPeriod('today',this)">HOJE</button>
+    <button class="tab-btn" onclick="setPeriod('week',this)">SEMANA</button>
+    <button class="tab-btn" onclick="setPeriod('month',this)">MÊS</button>
+    <button class="tab-btn" onclick="setPeriod('compare',this)">COMPARAR</button>
+  </div>
+</div>
+
+<main>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-row" id="kpi-row">
+    <div class="kpi-card accent-red">
+      <div class="kpi-label">T. COZINHA MÉDIO</div>
+      <div class="kpi-value" id="kpi-cozinha" style="color:var(--accent)">--</div>
+      <div class="kpi-unit">minutos</div>
+      <div class="kpi-delta neutral" id="delta-cozinha">—</div>
+    </div>
+    <div class="kpi-card accent-orange">
+      <div class="kpi-label">T. ENTREGA MÉDIO</div>
+      <div class="kpi-value" id="kpi-entrega" style="color:var(--accent2)">--</div>
+      <div class="kpi-unit">minutos</div>
+      <div class="kpi-delta neutral" id="delta-entrega">—</div>
+    </div>
+    <div class="kpi-card accent-gold">
+      <div class="kpi-label">T. TOTAL MÉDIO</div>
+      <div class="kpi-value" id="kpi-total" style="color:var(--accent3)">--</div>
+      <div class="kpi-unit">minutos</div>
+      <div class="kpi-delta neutral" id="delta-total">—</div>
+    </div>
+    <div class="kpi-card accent-green">
+      <div class="kpi-label">PEDIDOS</div>
+      <div class="kpi-value" id="kpi-pedidos" style="color:var(--ok)">--</div>
+      <div class="kpi-unit">no período</div>
+      <div class="kpi-delta neutral" id="delta-pedidos">—</div>
+    </div>
+    <div class="kpi-card accent-blue">
+      <div class="kpi-label">SLA ≤ 45 MIN</div>
+      <div class="kpi-value" id="kpi-sla" style="color:#60a5fa">--</div>
+      <div class="kpi-unit">% dentro do prazo</div>
+      <div class="kpi-delta neutral" id="delta-sla">—</div>
+    </div>
+  </div>
+
+  <!-- SLA PROGRESS BARS -->
+  <div class="sla-bar-wrap">
+    <div class="sla-label">SLA<br>BREAKDOWN</div>
+    <div class="sla-progress-group">
+      <div class="sla-progress-label"><span>≤ 30 min (EXCELENTE)</span><span id="sla-ex-pct">—</span></div>
+      <div class="sla-progress-bar"><div class="sla-fill fill-ok" id="sla-ex-bar" style="width:0%"></div></div>
+      <div class="sla-progress-label"><span>31–45 min (OK)</span><span id="sla-ok-pct">—</span></div>
+      <div class="sla-progress-bar"><div class="sla-fill fill-warn" id="sla-ok-bar" style="width:0%"></div></div>
+      <div class="sla-progress-label"><span>> 45 min (CRÍTICO)</span><span id="sla-bad-pct">—</span></div>
+      <div class="sla-progress-bar"><div class="sla-fill fill-bad" id="sla-bad-bar" style="width:0%"></div></div>
+    </div>
+    <div style="font-family:var(--mono);font-size:0.7rem;color:var(--muted);text-align:right;min-width:120px;">
+      <div>META COZINHA</div>
+      <div style="font-size:1.1rem;color:var(--accent);font-family:var(--display)">20 MIN</div>
+      <div style="margin-top:6px">META ENTREGA</div>
+      <div style="font-size:1.1rem;color:var(--accent2);font-family:var(--display)">15 MIN</div>
+    </div>
+  </div>
+
+  <!-- WEEKDAY SUMMARY -->
+  <div id="weekday-section">
+    <div style="font-family:var(--display);font-size:1rem;letter-spacing:3px;color:var(--muted);margin-bottom:0.6rem;">
+      RESUMO POR DIA DA SEMANA — ÚLTIMAS 4 SEMANAS
+    </div>
+    <div class="weekday-grid" id="weekday-grid"></div>
+  </div>
+
+  <!-- CHARTS ROW 1 -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">EVOLUÇÃO DIÁRIA</div>
+      <div class="chart-subtitle">COZINHA · ENTREGA · TOTAL — MÉDIA POR DIA</div>
+      <div class="chart-container tall">
+        <canvas id="chart-daily"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">DISTRIBUIÇÃO DE FREQUÊNCIA</div>
+      <div class="chart-subtitle">HISTOGRAMA — TEMPO TOTAL (MIN)</div>
+      <div class="chart-container tall">
+        <canvas id="chart-hist"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 2 -->
+  <div class="charts-grid">
+    <div class="chart-card full">
+      <div class="chart-title">COMPARATIVO MESMO DIA — SEMANAS ANTERIORES</div>
+      <div class="chart-subtitle" id="compare-subtitle">SEG × SEG × SEG × SEG — T. TOTAL MÉDIO POR HORA</div>
+      <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
+        <button class="tab-btn active" onclick="setCompareDay(1,this)">SEG</button>
+        <button class="tab-btn" onclick="setCompareDay(2,this)">TER</button>
+        <button class="tab-btn" onclick="setCompareDay(3,this)">QUA</button>
+        <button class="tab-btn" onclick="setCompareDay(4,this)">QUI</button>
+        <button class="tab-btn" onclick="setCompareDay(5,this)">SEX</button>
+        <button class="tab-btn" onclick="setCompareDay(6,this)">SÁB</button>
+        <button class="tab-btn" onclick="setCompareDay(0,this)">DOM</button>
+      </div>
+      <div class="chart-container">
+        <canvas id="chart-compare"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 3 -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">BOXPLOT — DISPERSÃO</div>
+      <div class="chart-subtitle">MIN · P25 · MEDIANA · P75 · MAX POR DIA</div>
+      <div class="chart-container tall">
+        <canvas id="chart-box"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">MAPA DE CALOR — HORA × DIA</div>
+      <div class="chart-subtitle">TEMPO TOTAL MÉDIO POR FAIXA HORÁRIA</div>
+      <div style="margin-top:0.5rem;overflow-x:auto;" id="heatmap-wrap"></div>
+    </div>
+  </div>
+
+  <!-- PEDIDOS TABLE -->
+  <div class="table-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <div>
+        <div class="chart-title">ÚLTIMOS PEDIDOS</div>
+        <div class="chart-subtitle">DETALHE DE TEMPOS POR PEDIDO</div>
+      </div>
+      <input type="text" id="table-search" placeholder="buscar pedido…"
+        style="background:var(--bg);border:1px solid var(--border);color:var(--text);
+               font-family:var(--mono);font-size:0.75rem;padding:6px 12px;
+               border-radius:3px;outline:none;width:200px;"
+        oninput="filterTable(this.value)">
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="orders-table">
+        <thead>
+          <tr>
+            <th onclick="sortTable(0)">PEDIDO ↕</th>
+            <th onclick="sortTable(1)">DATA/HORA ↕</th>
+            <th onclick="sortTable(2)">COZINHA ↕</th>
+            <th onclick="sortTable(3)">ENTREGA ↕</th>
+            <th onclick="sortTable(4)">TOTAL ↕</th>
+            <th onclick="sortTable(5)">STATUS ↕</th>
+            <th>CANAL</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-top:0.8rem;text-align:right;">
+      Exibindo <span id="table-count">0</span> pedidos
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div>PIZZAMETRICS v2.0 — SAIPOS API INTEGRATION</div>
+  <div id="last-update">Último sync: —</div>
+  <div>Desenvolvido para análise operacional de pizzaria delivery</div>
+</footer>
+
+<script>
+// ════════════════════════════════════════
+//  ESTADO GLOBAL
+// ════════════════════════════════════════
+let state = {
+  orders: [],
+  period: 'today',
+  compareDay: 1,
+  charts: {},
+  isLive: false
+};
+const DAYS_PT = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+const DAYS_FULL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+// ════════════════════════════════════════
+//  CLOCK
+// ════════════════════════════════════════
+function updateClock() {
+  const n = new Date();
+  const t = n.toLocaleTimeString('pt-BR');
+  document.getElementById('live-clock').textContent = t;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ════════════════════════════════════════
+//  PERIOD / COMPARE DAY
+// ════════════════════════════════════════
+function setPeriod(p, el) {
+  state.period = p;
+  document.querySelectorAll('.period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+function setCompareDay(d, el) {
+  state.compareDay = d;
+  document.querySelectorAll('#chart-compare').forEach(() => {});
+  document.querySelectorAll('.tab-btn[onclick^="setCompareDay"]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  updateCompareChart();
+  const lbl = DAYS_FULL[d];
+  document.getElementById('compare-subtitle').textContent =
+    `${lbl.toUpperCase()} × ${lbl.toUpperCase()} × ${lbl.toUpperCase()} × ${lbl.toUpperCase()} — T. TOTAL MÉDIO POR HORA`;
+}
+
+// ════════════════════════════════════════
+//  GERADOR DE DADOS DEMO
+// ════════════════════════════════════════
+function gauss(mean, std) {
+  let u=0, v=0;
+  while(u===0) u=Math.random();
+  while(v===0) v=Math.random();
+  return mean + std * Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+}
+
+function generateDemo() {
+  const orders = [];
+  const now = new Date();
+  const channels = ['iFood','WhatsApp','App Próprio','Telefone'];
+  const weekMultiplier = [0.6, 0.7, 0.75, 0.8, 0.9, 1.0, 1.3, 1.5, 1.4, 1.2, 1.1, 1.3,
+                           1.5, 1.3, 1.2, 1.1, 1.3, 1.6, 1.8, 1.7, 1.5, 1.2, 1.0, 0.8];
+
+  for (let d = 27; d >= 0; d--) {
+    const date = new Date(now);
+    date.setDate(now.getDate() - d);
+    const weekday = date.getDay();
+    // Finais de semana têm mais pedidos
+    const dayLoad = (weekday === 5 || weekday === 6) ? 35 : (weekday === 0 ? 28 : 18);
+
+    for (let h = 10; h <= 23; h++) {
+      const hourLoad = Math.round(weekMultiplier[h] * dayLoad * 0.15 * (0.7 + Math.random() * 0.6));
+      for (let i = 0; i < hourLoad; i++) {
+        const orderTime = new Date(date);
+        orderTime.setHours(h, Math.floor(Math.random() * 60), 0, 0);
+
+        // Cozinha: 12-30 min, piora em horários de pico
+        const peakPenalty = (h >= 19 && h <= 21) ? 5 : 0;
+        let cozinha = Math.max(8, Math.round(gauss(18 + peakPenalty, 4)));
+
+        // Entrega: 15-40 min, piora fins de semana e pico
+        let entrega = Math.max(10, Math.round(gauss(22 + peakPenalty + (weekday>=5?3:0), 5)));
+
+        const total = cozinha + entrega;
+        const id = `PED-${String(orders.length+1).padStart(5,'0')}`;
+        const ch = channels[Math.floor(Math.random() * channels.length)];
+
+        orders.push({
+          id, orderTime, weekday, hour: h,
+          cozinha, entrega, total, channel: ch,
+          status: total <= 30 ? 'EXCELENTE' : total <= 45 ? 'OK' : 'CRÍTICO'
+        });
+      }
+    }
+  }
+  return orders;
+}
+
+// ════════════════════════════════════════
+//  FILTRO POR PERÍODO
+// ════════════════════════════════════════
+function filterByPeriod(orders) {
+  const now = new Date();
+  const today = new Date(now); today.setHours(0,0,0,0);
+  const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  if (state.period === 'today')
+    return orders.filter(o => o.orderTime >= today);
+  if (state.period === 'week')
+    return orders.filter(o => o.orderTime >= weekStart);
+  if (state.period === 'month')
+    return orders.filter(o => o.orderTime >= monthStart);
+  return orders; // compare = all
+}
+
+// ════════════════════════════════════════
+//  ESTATÍSTICAS
+// ════════════════════════════════════════
+function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+function median(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a,b)=>a-b);
+  const m = Math.floor(s.length/2);
+  return s.length%2 ? s[m] : (s[m-1]+s[m])/2;
+}
+function percentile(arr, p) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a,b)=>a-b);
+  const idx = Math.ceil(p/100 * s.length) - 1;
+  return s[Math.max(0,idx)];
+}
+function stddev(arr) {
+  if (arr.length < 2) return 0;
+  const m = avg(arr);
+  return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length);
+}
+
+// ════════════════════════════════════════
+//  RENDER PRINCIPAL
+// ════════════════════════════════════════
+function render() {
+  const filtered = filterByPeriod(state.orders);
+  if (!filtered.length) {
+    document.getElementById('kpi-cozinha').textContent = '--';
+    return;
+  }
+
+  const cz = filtered.map(o=>o.cozinha);
+  const en = filtered.map(o=>o.entrega);
+  const to = filtered.map(o=>o.total);
+
+  // ── KPIs ──
+  const avgCz = avg(cz), avgEn = avg(en), avgTo = avg(to);
+  document.getElementById('kpi-cozinha').textContent = avgCz.toFixed(1);
+  document.getElementById('kpi-entrega').textContent = avgEn.toFixed(1);
+  document.getElementById('kpi-total').textContent = avgTo.toFixed(1);
+  document.getElementById('kpi-pedidos').textContent = filtered.length;
+
+  const sla = filtered.filter(o=>o.total<=45).length / filtered.length * 100;
+  document.getElementById('kpi-sla').textContent = sla.toFixed(1) + '%';
+
+  const slaEx = filtered.filter(o=>o.total<=30).length / filtered.length * 100;
+  const slaOk = filtered.filter(o=>o.total>30&&o.total<=45).length / filtered.length * 100;
+  const slaBad = filtered.filter(o=>o.total>45).length / filtered.length * 100;
+
+  // Deltas (vs. semana anterior)
+  setDelta('delta-cozinha', avgCz, 20);
+  setDelta('delta-entrega', avgEn, 15);
+  setDelta('delta-total', avgTo, 42);
+  setDeltaRaw('delta-sla', sla, 85, true);
+  setDeltaRaw('delta-pedidos', filtered.length, 0, null);
+
+  // SLA bars
+  animateBar('sla-ex-bar', slaEx);
+  animateBar('sla-ok-bar', slaOk);
+  animateBar('sla-bad-bar', slaBad);
+  document.getElementById('sla-ex-pct').textContent = slaEx.toFixed(1)+'%';
+  document.getElementById('sla-ok-pct').textContent = slaOk.toFixed(1)+'%';
+  document.getElementById('sla-bad-pct').textContent = slaBad.toFixed(1)+'%';
+
+  // Weekday
+  renderWeekday(filtered);
+
+  // Charts
+  renderDailyChart(filtered);
+  renderHistogram(filtered);
+  updateCompareChart();
+  renderBoxPlot(filtered);
+  renderHeatmap(filtered);
+  renderTable(filtered);
+
+  // Timestamp
+  document.getElementById('last-update').textContent =
+    'Último sync: ' + new Date().toLocaleString('pt-BR');
+}
+
+function setDelta(id, val, target) {
+  const el = document.getElementById(id);
+  const diff = val - target;
+  if (Math.abs(diff) < 0.5) { el.textContent = '≈ META'; el.className = 'kpi-delta neutral'; }
+  else if (diff > 0) { el.textContent = `+${diff.toFixed(1)}`; el.className = 'kpi-delta up'; }
+  else { el.textContent = `${diff.toFixed(1)}`; el.className = 'kpi-delta down'; }
+}
+function setDeltaRaw(id, val, target, higherBetter) {
+  const el = document.getElementById(id);
+  if (higherBetter === null) { el.textContent = `${val}`; el.className = 'kpi-delta neutral'; return; }
+  const diff = val - target;
+  if (higherBetter) {
+    if (diff >= 0) { el.textContent = `+${diff.toFixed(1)}%`; el.className = 'kpi-delta down'; }
+    else { el.textContent = `${diff.toFixed(1)}%`; el.className = 'kpi-delta up'; }
+  }
+}
+function animateBar(id, pct) {
+  setTimeout(() => document.getElementById(id).style.width = Math.min(100,pct).toFixed(1)+'%', 50);
+}
+
+// ────────────────────────────────────────
+//  WEEKDAY CARDS
+// ────────────────────────────────────────
+function renderWeekday(orders) {
+  const grid = document.getElementById('weekday-grid');
+  const byDay = {};
+  for (let d = 0; d < 7; d++) byDay[d] = [];
+  orders.forEach(o => byDay[o.weekday].push(o.total));
+
+  const todayWd = new Date().getDay();
+  const maxAvg = Math.max(...Object.values(byDay).map(a => avg(a) || 0)) || 1;
+
+  grid.innerHTML = '';
+  for (let d = 0; d < 7; d++) {
+    const a = byDay[d];
+    const av = avg(a);
+    const isToday = d === todayWd;
+    const color = av <= 30 ? 'var(--ok)' : av <= 45 ? 'var(--warn)' : 'var(--bad)';
+    const barW = (av / maxAvg * 100).toFixed(1);
+    const card = document.createElement('div');
+    card.className = 'wd-card';
+    card.innerHTML = `
+      <div class="wd-name ${isToday?'today':''}">${DAYS_PT[d]}</div>
+      <div class="wd-time" style="color:${color}">${av ? av.toFixed(1)+'m' : '--'}</div>
+      <div class="wd-bar" style="background:${color};width:${barW}%;max-width:100%"></div>
+      <div class="wd-orders">${a.length} pedidos</div>
+    `;
+    grid.appendChild(card);
+  }
+}
+
+// ────────────────────────────────────────
+//  DAILY LINE CHART
+// ────────────────────────────────────────
+function renderDailyChart(orders) {
+  const byDate = {};
+  orders.forEach(o => {
+    const k = o.orderTime.toLocaleDateString('pt-BR');
+    if (!byDate[k]) byDate[k] = {cz:[], en:[], to:[]};
+    byDate[k].cz.push(o.cozinha);
+    byDate[k].en.push(o.entrega);
+    byDate[k].to.push(o.total);
+  });
+  const labels = Object.keys(byDate).slice(-14);
+  const dataCz = labels.map(k => +avg(byDate[k].cz).toFixed(1));
+  const dataEn = labels.map(k => +avg(byDate[k].en).toFixed(1));
+  const dataTo = labels.map(k => +avg(byDate[k].to).toFixed(1));
+
+  destroyChart('chart-daily');
+  const ctx = document.getElementById('chart-daily').getContext('2d');
+  state.charts['chart-daily'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Cozinha', data:dataCz, borderColor:'#ff4500', backgroundColor:'rgba(255,69,0,.08)',
+          tension:.4, pointRadius:3, pointHoverRadius:6 },
+        { label:'Entrega', data:dataEn, borderColor:'#ff8c00', backgroundColor:'rgba(255,140,0,.08)',
+          tension:.4, pointRadius:3, pointHoverRadius:6 },
+        { label:'Total',   data:dataTo, borderColor:'#ffd700', backgroundColor:'rgba(255,215,0,.1)',
+          tension:.4, pointRadius:3, pointHoverRadius:6, borderWidth:2 },
+        { label:'Meta Total', data:labels.map(()=>45), borderColor:'rgba(239,68,68,.4)',
+          borderDash:[6,4], pointRadius:0, borderWidth:1 }
+      ]
+    },
+    options: chartOpts('Minutos')
+  });
+}
+
+// ────────────────────────────────────────
+//  HISTOGRAM
+// ────────────────────────────────────────
+function renderHistogram(orders) {
+  const buckets = [];
+  const labels = [];
+  for (let i = 10; i <= 70; i += 5) {
+    labels.push(`${i}–${i+4}`);
+    buckets.push(orders.filter(o => o.total >= i && o.total < i+5).length);
+  }
+  const colors = labels.map((l, i) => {
+    const v = 10 + i * 5;
+    return v <= 30 ? 'rgba(34,197,94,.7)' : v <= 45 ? 'rgba(245,158,11,.7)' : 'rgba(239,68,68,.7)';
+  });
+
+  destroyChart('chart-hist');
+  const ctx = document.getElementById('chart-hist').getContext('2d');
+  state.charts['chart-hist'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label:'Pedidos', data:buckets, backgroundColor:colors, borderRadius:2 }] },
+    options: { ...chartOpts('Pedidos'), plugins: { ...chartOpts('').plugins, legend:{ display:false } } }
+  });
+}
+
+// ────────────────────────────────────────
+//  COMPARE CHART (mesmo dia das últimas 4 semanas)
+// ────────────────────────────────────────
+function updateCompareChart() {
+  const d = state.compareDay;
+  const allOrders = state.orders;
+  const now = new Date();
+  const weeks = 4;
+  const datasets = [];
+  const colors = ['#ff4500','#ff8c00','#ffd700','#60a5fa'];
+
+  for (let w = 0; w < weeks; w++) {
+    // data alvo: o d-ésimo dia da semana, w semanas atrás
+    const target = new Date(now);
+    target.setDate(now.getDate() - now.getDay() - w * 7 + d);
+    target.setHours(0,0,0,0);
+    const next = new Date(target); next.setDate(target.getDate()+1);
+    const dayOrders = allOrders.filter(o => o.orderTime >= target && o.orderTime < next);
+
+    const byHour = {};
+    dayOrders.forEach(o => {
+      if (!byHour[o.hour]) byHour[o.hour] = [];
+      byHour[o.hour].push(o.total);
+    });
+    const hours = Array.from({length:14}, (_,i)=>i+10);
+    const data = hours.map(h => byHour[h] ? +avg(byHour[h]).toFixed(1) : null);
+    const label = target.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    datasets.push({ label, data, borderColor:colors[w], backgroundColor:'transparent',
+      tension:.4, pointRadius:3, spanGaps:true });
+  }
+
+  destroyChart('chart-compare');
+  const ctx = document.getElementById('chart-compare').getContext('2d');
+  state.charts['chart-compare'] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: Array.from({length:14},(_,i)=>`${i+10}h`), datasets },
+    options: chartOpts('Min (T. Total Médio)')
+  });
+}
+
+// ────────────────────────────────────────
+//  BOXPLOT (simulated with bar chart)
+// ────────────────────────────────────────
+function renderBoxPlot(orders) {
+  const days = DAYS_PT;
+  const byDay = {};
+  days.forEach((d,i) => byDay[i] = []);
+  orders.forEach(o => byDay[o.weekday].push(o.total));
+
+  const p25 = days.map((d,i) => percentile(byDay[i], 25));
+  const p50 = days.map((d,i) => Math.round(median(byDay[i])));
+  const p75 = days.map((d,i) => percentile(byDay[i], 75));
+  const min = days.map((d,i) => byDay[i].length ? Math.min(...byDay[i]) : 0);
+  const max = days.map((d,i) => byDay[i].length ? Math.max(...byDay[i]) : 0);
+
+  destroyChart('chart-box');
+  const ctx = document.getElementById('chart-box').getContext('2d');
+  state.charts['chart-box'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: [
+        { label:'Min', data:min, backgroundColor:'rgba(96,165,250,.3)', stack:'box' },
+        { label:'P25–P75', data:p75.map((v,i)=>v-p25[i]), backgroundColor:'rgba(255,140,0,.6)', stack:'box' },
+        { label:'Mediana', data:p50.map((v,i)=>v-p25[i]).map(()=>1),
+          backgroundColor:'rgba(255,215,0,.9)', stack:'box' },
+        { label:'Max', data:max.map((v,i)=>v-p75[i]), backgroundColor:'rgba(239,68,68,.3)', stack:'box' },
+      ]
+    },
+    options: {
+      ...chartOpts('Minutos'),
+      scales: { x:{ stacked:true, ...axisStyle() }, y:{ stacked:true, ...axisStyle() } }
+    }
+  });
+}
+
+// ────────────────────────────────────────
+//  HEATMAP
+// ────────────────────────────────────────
+function renderHeatmap(orders) {
+  const matrix = {};
+  DAYS_PT.forEach((d,di) => {
+    matrix[di] = {};
+    for (let h = 10; h <= 23; h++) matrix[di][h] = [];
+  });
+  orders.forEach(o => {
+    if (matrix[o.weekday] && o.hour >= 10 && o.hour <= 23)
+      matrix[o.weekday][o.hour].push(o.total);
+  });
+
+  // find max for color scale
+  let globalMax = 0;
+  Object.values(matrix).forEach(row =>
+    Object.values(row).forEach(arr => { const a = avg(arr); if (a > globalMax) globalMax = a; })
+  );
+
+  const wrap = document.getElementById('heatmap-wrap');
+  const hours = Array.from({length:14}, (_,i)=>i+10);
+
+  let html = '<div class="heatmap-grid" style="grid-template-columns: auto repeat(14, 1fr);">';
+  // header
+  html += '<div></div>';
+  hours.forEach(h => html += `<div class="hm-header">${h}h</div>`);
+
+  DAYS_PT.forEach((day, di) => {
+    html += `<div class="hm-row-label">${day}</div>`;
+    hours.forEach(h => {
+      const vals = matrix[di][h];
+      const a = avg(vals);
+      const pct = globalMax ? a / globalMax : 0;
+      const r = Math.round(50 + pct * 205);
+      const g = Math.round(197 - pct * 180);
+      const b = Math.round(94 - pct * 90);
+      const bg = vals.length ? `rgb(${r},${g},${b})` : 'var(--border)';
+      const lbl = vals.length ? `${day} ${h}h — avg ${a.toFixed(1)}min (${vals.length} pedidos)` : '';
+      html += `<div class="hm-cell" style="background:${bg}" title="${lbl}"></div>`;
+    });
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+// ────────────────────────────────────────
+//  TABLE
+// ────────────────────────────────────────
+let tableData = [];
+let sortCol = 1, sortAsc = false;
+
+function renderTable(orders) {
+  tableData = orders.slice(-200).reverse(); // last 200
+  drawTable(tableData);
+}
+
+function drawTable(data) {
+  const tbody = document.getElementById('table-body');
+  document.getElementById('table-count').textContent = data.length;
+  const rows = data.slice(0, 100).map(o => {
+    const pill = o.status === 'EXCELENTE' ? 'pill-ok' : o.status === 'OK' ? 'pill-warn' : 'pill-bad';
+    return `<tr>
+      <td>${o.id}</td>
+      <td>${o.orderTime.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+      <td style="color:var(--accent)">${o.cozinha} min</td>
+      <td style="color:var(--accent2)">${o.entrega} min</td>
+      <td style="color:var(--accent3);font-weight:600">${o.total} min</td>
+      <td><span class="pill ${pill}">${o.status}</span></td>
+      <td style="color:var(--muted)">${o.channel}</td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = rows;
+}
+
+function filterTable(q) {
+  const filtered = tableData.filter(o =>
+    o.id.includes(q.toUpperCase()) || o.channel.toLowerCase().includes(q.toLowerCase())
+  );
+  drawTable(filtered);
+}
+
+function sortTable(col) {
+  if (sortCol === col) sortAsc = !sortAsc;
+  else { sortCol = col; sortAsc = true; }
+  const keys = ['id','orderTime','cozinha','entrega','total','status','channel'];
+  tableData.sort((a,b) => {
+    const av = a[keys[col]], bv = b[keys[col]];
+    if (typeof av === 'number') return sortAsc ? av-bv : bv-av;
+    return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  });
+  drawTable(tableData);
+}
+
+// ────────────────────────────────────────
+//  CHART HELPERS
+// ────────────────────────────────────────
+function destroyChart(id) {
+  if (state.charts[id]) { state.charts[id].destroy(); delete state.charts[id]; }
+}
+
+function axisStyle() {
+  return {
+    ticks: { color:'#666', font:{ family:"'IBM Plex Mono'" , size:10 } },
+    grid: { color:'rgba(255,255,255,.05)' }
+  };
+}
+
+function chartOpts(yLabel) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color:'#888', font:{ family:"'IBM Plex Mono'", size:10 }, boxWidth:12 } },
+      tooltip: { backgroundColor:'#161616', borderColor:'#2a2a2a', borderWidth:1,
+        titleColor:'#e8e8e8', bodyColor:'#888',
+        titleFont:{ family:"'IBM Plex Mono'" }, bodyFont:{ family:"'IBM Plex Mono'", size:11 } }
+    },
+    scales: {
+      x: axisStyle(),
+      y: { ...axisStyle(), title:{ display:!!yLabel, text:yLabel, color:'#666',
+        font:{ family:"'IBM Plex Mono'", size:10 } } }
+    }
+  };
+}
+
+// ════════════════════════════════════════
+//  LOAD DEMO
+// ════════════════════════════════════════
+function loadDemoData() {
+  state.orders = generateDemo();
+  state.isLive = false;
+  document.getElementById('api-badge').textContent = '● DEMO';
+  document.getElementById('api-badge').className = 'api-badge demo';
+  render();
+}
+
+// ════════════════════════════════════════
+//  FETCH REAL (Saipos API)
+// ════════════════════════════════════════
+async function fetchRealData() {
+  const baseUrl = document.getElementById('inp-url').value.trim().replace(/\/$/,'');
+  const token   = document.getElementById('inp-token').value.trim();
+  const storeId = document.getElementById('inp-store').value.trim();
+
+  if (!token) { alert('Informe o Bearer Token Saipos'); return; }
+
+  document.getElementById('api-badge').innerHTML = '<span class="spinner"></span> CARREGANDO';
+  document.getElementById('api-badge').className = 'api-badge demo';
+
+  try {
+    // === ENDPOINT SAIPOS ===
+    // A Saipos usa o padrão Open Delivery (Abrasel).
+    // Endpoint de pedidos: GET /orders  (com filtros de data e store_id)
+    // Ajuste os parâmetros conforme a documentação da sua conta em:
+    // https://saipos-docs-order-api.readme.io
+
+    const since = new Date();
+    since.setDate(since.getDate() - 28);
+    const params = new URLSearchParams({
+      store_id: storeId,
+      created_at_gte: since.toISOString(),
+      limit: 500,
+      status: 'CONCLUDED'
+    });
+
+    const resp = await fetch(`${baseUrl}/orders?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+    const json = await resp.json();
+
+    // Saipos retorna array em `orders` ou diretamente como array
+    const raw = json.orders ?? json.data ?? json ?? [];
+    state.orders = raw.map(mapSaiposOrder).filter(Boolean);
+
+    if (!state.orders.length) throw new Error('Nenhum pedido retornado. Verifique o store_id e o período.');
+
+    state.isLive = true;
+    document.getElementById('api-badge').textContent = '● LIVE';
+    document.getElementById('api-badge').className = 'api-badge live';
+    render();
+
+  } catch (err) {
+    document.getElementById('api-badge').textContent = '● ERRO';
+    document.getElementById('api-badge').className = 'api-badge demo';
+    alert(`Erro ao conectar com a API Saipos:\n\n${err.message}\n\nVerifique URL, token e store_id.\nCarregando dados demo.`);
+    loadDemoData();
+  }
+}
+
+// Mapeador de pedido Saipos → formato interno
+// Adapte os campos conforme a resposta real da sua API
+function mapSaiposOrder(raw) {
+  try {
+    // timestamps esperados: created_at, kitchen_dispatched_at, delivered_at
+    const created     = new Date(raw.created_at || raw.createdAt);
+    const kitchenDone = new Date(raw.kitchen_dispatched_at || raw.kitchenDispatchedAt || raw.prepared_at);
+    const delivered   = new Date(raw.delivered_at || raw.deliveredAt || raw.finished_at);
+
+    if (isNaN(created) || isNaN(delivered)) return null;
+
+    const cozinha = isNaN(kitchenDone) ? 18 :
+      Math.round((kitchenDone - created) / 60000);
+    const entrega = isNaN(kitchenDone) ?
+      Math.round((delivered - created) / 60000) - cozinha :
+      Math.round((delivered - kitchenDone) / 60000);
+    const total = Math.round((delivered - created) / 60000);
+
+    if (cozinha < 1 || entrega < 1 || total < 5) return null;
+
+    const channels = { IFOOD:'iFood', WHATSAPP:'WhatsApp', OWN_APP:'App Próprio',
+                       PHONE:'Telefone', RAPPI:'Rappi' };
+    const ch = channels[raw.sales_channel] || raw.sales_channel || 'Outro';
+
+    return {
+      id: raw.id || raw.order_id || `R${Math.random()}`,
+      orderTime: created,
+      weekday: created.getDay(),
+      hour: created.getHours(),
+      cozinha: Math.max(1, cozinha),
+      entrega: Math.max(1, entrega),
+      total: Math.max(5, total),
+      channel: ch,
+      status: total <= 30 ? 'EXCELENTE' : total <= 45 ? 'OK' : 'CRÍTICO'
+    };
+  } catch { return null; }
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+loadDemoData();
+</script>
+</body>
+</html>
