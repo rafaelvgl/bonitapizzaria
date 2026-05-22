@@ -3,1288 +3,501 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PizzaMetrics — Dashboard de Tempos</title>
+<title>PizzaMetrics — Bonità Pizzaria</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
-
-  :root {
-    --bg: #0d0d0d;
-    --surface: #161616;
-    --surface2: #1e1e1e;
-    --border: #2a2a2a;
-    --accent: #ff4500;
-    --accent2: #ff8c00;
-    --accent3: #ffd700;
-    --ok: #22c55e;
-    --warn: #f59e0b;
-    --bad: #ef4444;
-    --text: #e8e8e8;
-    --muted: #666;
-    --mono: 'IBM Plex Mono', monospace;
-    --sans: 'IBM Plex Sans', sans-serif;
-    --display: 'Bebas Neue', sans-serif;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-  }
-
-  /* ──── HEADER ──── */
-  header {
-    background: var(--surface);
-    border-bottom: 2px solid var(--accent);
-    padding: 0 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 60px;
-    position: sticky; top: 0; z-index: 100;
-  }
-  .logo {
-    font-family: var(--display);
-    font-size: 1.8rem;
-    letter-spacing: 3px;
-    color: var(--accent);
-    display: flex; align-items: center; gap: 0.6rem;
-  }
-  .logo span { color: var(--text); }
-  .logo-sub {
-    font-family: var(--mono);
-    font-size: 0.6rem;
-    color: var(--muted);
-    letter-spacing: 2px;
-    margin-top: -4px;
-  }
-  .header-right {
-    display: flex; align-items: center; gap: 1rem;
-  }
-  #live-clock {
-    font-family: var(--mono);
-    font-size: 0.85rem;
-    color: var(--muted);
-    letter-spacing: 1px;
-  }
-  .api-badge {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    padding: 3px 10px;
-    border-radius: 2px;
-    border: 1px solid;
-  }
-  .api-badge.demo { border-color: var(--warn); color: var(--warn); }
-  .api-badge.live { border-color: var(--ok); color: var(--ok); }
-
-  /* ──── API CONFIG PANEL ──── */
-  .api-panel {
-    background: var(--surface2);
-    border-bottom: 1px solid var(--border);
-    padding: 0.8rem 2rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  .api-panel label {
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--muted);
-    letter-spacing: 1px;
-    white-space: nowrap;
-  }
-  .api-panel input[type="text"],
-  .api-panel input[type="password"] {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 0.8rem;
-    padding: 6px 12px;
-    border-radius: 3px;
-    flex: 1; min-width: 160px; max-width: 320px;
-    outline: none;
-    transition: border-color .2s;
-  }
-  .api-panel input:focus { border-color: var(--accent); }
-  .btn {
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    padding: 7px 16px;
-    border: none; border-radius: 3px;
-    cursor: pointer;
-    letter-spacing: 1px;
-    transition: all .15s;
-    white-space: nowrap;
-  }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #e03d00; }
-  .btn-ghost {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-  }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-  .period-tabs {
-    display: flex; gap: 4px; margin-left: auto;
-  }
-  .tab-btn {
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    padding: 5px 12px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    cursor: pointer;
-    border-radius: 2px;
-    transition: all .15s;
-    letter-spacing: 1px;
-  }
-  .tab-btn.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-
-  /* ──── MAIN LAYOUT ──── */
-  main { padding: 1.5rem 2rem; }
-
-  /* ──── KPI CARDS ──── */
-  .kpi-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  .kpi-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-top: 3px solid var(--border);
-    padding: 1.2rem 1.4rem;
-    position: relative;
-    overflow: hidden;
-    transition: transform .15s;
-  }
-  .kpi-card:hover { transform: translateY(-2px); }
-  .kpi-card.accent-red { border-top-color: var(--accent); }
-  .kpi-card.accent-orange { border-top-color: var(--accent2); }
-  .kpi-card.accent-gold { border-top-color: var(--accent3); }
-  .kpi-card.accent-green { border-top-color: var(--ok); }
-  .kpi-card.accent-blue { border-top-color: #60a5fa; }
-  .kpi-label {
-    font-family: var(--mono);
-    font-size: 0.65rem;
-    letter-spacing: 2px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-  }
-  .kpi-value {
-    font-family: var(--display);
-    font-size: 2.4rem;
-    line-height: 1;
-    letter-spacing: 1px;
-  }
-  .kpi-unit {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-  .kpi-delta {
-    position: absolute;
-    top: 1.2rem; right: 1rem;
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    padding: 2px 6px;
-    border-radius: 2px;
-  }
-  .kpi-delta.up { background: rgba(239,68,68,.15); color: var(--bad); }
-  .kpi-delta.down { background: rgba(34,197,94,.15); color: var(--ok); }
-  .kpi-delta.neutral { background: rgba(255,255,255,.05); color: var(--muted); }
-
-  /* ──── STATUS BAR ──── */
-  .sla-bar-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 1rem 1.5rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-    flex-wrap: wrap;
-  }
-  .sla-label {
-    font-family: var(--mono);
-    font-size: 0.68rem;
-    letter-spacing: 2px;
-    color: var(--muted);
-    white-space: nowrap;
-  }
-  .sla-progress-group { flex: 1; min-width: 200px; }
-  .sla-progress-label {
-    display: flex; justify-content: space-between;
-    font-family: var(--mono); font-size: 0.7rem;
-    color: var(--text); margin-bottom: 4px;
-  }
-  .sla-progress-bar {
-    height: 6px;
-    background: var(--border);
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 8px;
-  }
-  .sla-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width .8s ease;
-  }
-  .fill-ok { background: var(--ok); }
-  .fill-warn { background: var(--warn); }
-  .fill-bad { background: var(--bad); }
-
-  /* ──── CHARTS GRID ──── */
-  .charts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  .chart-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 1.2rem;
-    position: relative;
-  }
-  .chart-card.full { grid-column: 1 / -1; }
-  .chart-title {
-    font-family: var(--display);
-    font-size: 1.1rem;
-    letter-spacing: 2px;
-    color: var(--text);
-    margin-bottom: 0.3rem;
-  }
-  .chart-subtitle {
-    font-family: var(--mono);
-    font-size: 0.65rem;
-    color: var(--muted);
-    letter-spacing: 1px;
-    margin-bottom: 1rem;
-  }
-  .chart-container { position: relative; height: 240px; }
-  .chart-container.tall { height: 300px; }
-
-  /* ──── WEEKDAY COMPARISON ──── */
-  .weekday-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-    margin-bottom: 1.5rem;
-  }
-  .wd-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 0.8rem 0.6rem;
-    text-align: center;
-  }
-  .wd-name {
-    font-family: var(--display);
-    font-size: 1rem;
-    letter-spacing: 2px;
-    color: var(--muted);
-    margin-bottom: 0.5rem;
-  }
-  .wd-name.today { color: var(--accent); }
-  .wd-time {
-    font-family: var(--mono);
-    font-size: 0.75rem;
-    margin-bottom: 3px;
-  }
-  .wd-bar {
-    height: 4px;
-    border-radius: 2px;
-    margin: 4px 0;
-  }
-  .wd-orders {
-    font-family: var(--mono);
-    font-size: 0.65rem;
-    color: var(--muted);
-  }
-
-  /* ──── HEAT MAP ──── */
-  .heatmap-grid {
-    display: grid;
-    grid-template-columns: auto repeat(24, 1fr);
-    gap: 2px;
-    font-family: var(--mono);
-    font-size: 0.6rem;
-  }
-  .hm-header {
-    color: var(--muted);
-    text-align: center;
-    padding: 2px 0;
-  }
-  .hm-row-label {
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    padding-right: 6px;
-    white-space: nowrap;
-  }
-  .hm-cell {
-    height: 22px;
-    border-radius: 2px;
-    cursor: default;
-    transition: opacity .15s;
-    position: relative;
-  }
-  .hm-cell:hover { opacity: .7; outline: 1px solid #fff3; }
-  .hm-cell[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: 120%; left: 50%;
-    transform: translateX(-50%);
-    background: #000;
-    border: 1px solid var(--border);
-    padding: 3px 7px;
-    border-radius: 3px;
-    white-space: nowrap;
-    z-index: 10;
-    font-size: 0.6rem;
-    color: var(--text);
-    pointer-events: none;
-  }
-
-  /* ──── TABLE ──── */
-  .table-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 1.2rem;
-    margin-bottom: 1.5rem;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: var(--mono);
-    font-size: 0.78rem;
-  }
-  thead tr {
-    border-bottom: 2px solid var(--border);
-  }
-  th {
-    text-align: left;
-    padding: 0.6rem 0.8rem;
-    font-size: 0.65rem;
-    letter-spacing: 2px;
-    color: var(--muted);
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-  }
-  th:hover { color: var(--accent); }
-  td {
-    padding: 0.55rem 0.8rem;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-  }
-  tr:hover td { background: var(--surface2); }
-  .pill {
-    display: inline-block;
-    padding: 1px 8px;
-    border-radius: 2px;
-    font-size: 0.65rem;
-    letter-spacing: 1px;
-  }
-  .pill-ok { background: rgba(34,197,94,.15); color: var(--ok); border: 1px solid rgba(34,197,94,.3); }
-  .pill-warn { background: rgba(245,158,11,.15); color: var(--warn); border: 1px solid rgba(245,158,11,.3); }
-  .pill-bad { background: rgba(239,68,68,.15); color: var(--bad); border: 1px solid rgba(239,68,68,.3); }
-
-  /* ──── LOADING / ERROR ──── */
-  .status-msg {
-    text-align: center;
-    padding: 3rem;
-    font-family: var(--mono);
-    font-size: 0.85rem;
-    color: var(--muted);
-  }
-  .spinner {
-    display: inline-block;
-    width: 16px; height: 16px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin .6s linear infinite;
-    vertical-align: middle;
-    margin-right: 8px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ──── FOOTER ──── */
-  footer {
-    border-top: 1px solid var(--border);
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: var(--mono);
-    font-size: 0.65rem;
-    color: var(--muted);
-    letter-spacing: 1px;
-  }
-
-  @media (max-width: 900px) {
-    .charts-grid { grid-template-columns: 1fr; }
-    .charts-grid .chart-card.full { grid-column: 1; }
-    .weekday-grid { grid-template-columns: repeat(4, 1fr); }
-    .api-panel { flex-direction: column; align-items: flex-start; }
-    .period-tabs { margin-left: 0; }
-  }
-  @media (max-width: 600px) {
-    main { padding: 1rem; }
-    header { padding: 0 1rem; }
-    .weekday-grid { grid-template-columns: repeat(2, 1fr); }
-    .kpi-row { grid-template-columns: 1fr 1fr; }
-  }
+:root{--accent:#e84224;--accent2:#f97316;--gold:#eab308;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--blue:#3b82f6;--bg:#0f0f0f;--surface:#161616;--surface2:#1c1c1c;--border:#252525;--text:#e8e8e8;--muted:#666;--mono:'IBM Plex Mono',monospace;--sans:'Segoe UI',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--text);background:var(--bg);font-size:14px;min-height:100vh}
+header{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1.2rem;background:var(--surface);border-bottom:2px solid var(--accent);position:sticky;top:0;z-index:50}
+.logo{font-size:20px;font-weight:600}.logo span{color:var(--accent)}
+.logo-sub{font-size:10px;color:var(--muted);margin-top:1px;letter-spacing:1px}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid;font-family:var(--mono)}
+.bd{border-color:var(--warn);color:var(--warn)}.bl{border-color:var(--ok);color:var(--ok)}.be{border-color:var(--bad);color:var(--bad)}.bk{border-color:var(--blue);color:var(--blue)}
+.cbar{background:var(--surface);border-bottom:1px solid var(--border);padding:.8rem 1.2rem;display:flex;flex-direction:column;gap:.6rem}
+.ctitle{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
+.crow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.crow label{font-size:11px;color:var(--muted);min-width:52px;white-space:nowrap}
+.inp{flex:1;min-width:120px;font-size:12px;font-family:var(--mono);height:32px;padding:0 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;transition:border-color .15s}
+.inp:focus{border-color:var(--accent)}
+.btn{height:32px;padding:0 14px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btp{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}.btp:hover{background:#c73b1f;border-color:#c73b1f;color:#fff}
+.info{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:.5rem .8rem;font-size:12px;color:var(--muted);line-height:1.7;display:none}
+.tabs{display:flex;gap:4px;padding:.7rem 1.2rem 0;background:var(--surface);border-bottom:1px solid var(--border)}
+.tab{height:32px;padding:0 14px;border-radius:4px 4px 0 0;border:1px solid transparent;border-bottom:none;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;margin-bottom:-1px}
+.tab.a{background:var(--bg);border-color:var(--border);color:var(--text)}
+main{padding:1rem 1.2rem}
+.krow{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1rem}
+.kc{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem;position:relative;border-top:2px solid transparent}
+.kc.r{border-top-color:var(--accent)}.kc.o{border-top-color:var(--accent2)}.kc.g2{border-top-color:var(--gold)}.kc.gn{border-top-color:var(--ok)}.kc.b{border-top-color:var(--blue)}
+.kl{font-size:11px;color:var(--muted);margin-bottom:5px}.kv{font-size:28px;font-weight:500;line-height:1}.ku{font-size:10px;color:var(--muted);margin-top:3px}
+.kt{position:absolute;top:10px;right:10px;font-size:10px;padding:2px 7px;border-radius:10px}
+.tok{background:rgba(34,197,94,.1);color:var(--ok)}.tov{background:rgba(239,68,68,.1);color:var(--bad)}.tn{background:var(--surface2);color:var(--muted)}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem}
+.sctitle{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.sr{display:flex;align-items:center;gap:10px;margin-bottom:8px}.sr:last-child{margin-bottom:0}
+.sl{font-size:12px;min-width:160px}.stk{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.sf{height:100%;border-radius:3px;transition:width .8s ease}.sp{font-size:12px;font-family:var(--mono);min-width:42px;text-align:right}
+.wg{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:1rem}
+.wc{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:.6rem .4rem;text-align:center}
+.wn{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px}.wn.td{color:var(--accent)}
+.wv{font-size:15px;font-weight:500;margin-bottom:2px}.wb{height:3px;border-radius:2px;margin:3px auto 4px}.wct{font-size:10px;color:var(--muted)}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.cc{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem}.cc.fw{grid-column:1/-1}
+.ct{font-size:13px;font-weight:600;margin-bottom:2px}.cs{font-size:11px;color:var(--muted);margin-bottom:10px}
+.dtb{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+.dtb button{height:26px;padding:0 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;transition:all .15s}
+.dtb button.a{background:var(--accent);border-color:var(--accent);color:#fff}
+.dtb button:hover:not(.a){border-color:var(--accent);color:var(--accent)}
+.hmh{font-size:9px;color:var(--muted);text-align:center;font-family:var(--mono)}
+.hmr{font-size:9px;color:var(--muted);display:flex;align-items:center;padding-right:4px;white-space:nowrap}
+.hmc{height:20px;border-radius:2px}
+/* TABELA */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem}
+.tbl-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;flex-wrap:wrap;gap:8px}
+.tbl-search{height:30px;padding:0 10px;font-size:12px;font-family:var(--mono);background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;width:200px}
+.tbl-search:focus{border-color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+thead tr{border-bottom:1px solid var(--border)}
+th{text-align:left;padding:.5rem .7rem;font-size:10px;letter-spacing:1px;color:var(--muted);cursor:pointer;white-space:nowrap;user-select:none}
+th:hover{color:var(--accent)}
+td{padding:.45rem .7rem;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text)}
+tr:hover td{background:var(--surface2)}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;letter-spacing:.5px}
+.p-ok{background:rgba(34,197,94,.1);color:var(--ok);border:1px solid rgba(34,197,94,.2)}
+.p-warn{background:rgba(245,158,11,.1);color:var(--warn);border:1px solid rgba(245,158,11,.2)}
+.p-bad{background:rgba(239,68,68,.1);color:var(--bad);border:1px solid rgba(239,68,68,.2)}
+.tbl-foot{font-size:11px;color:var(--muted);margin-top:.6rem;text-align:right}
+/* BAR inline */
+.t-bar{display:inline-block;height:4px;border-radius:2px;vertical-align:middle;margin-left:4px}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stmsg{text-align:center;padding:3rem;font-size:13px;color:var(--muted)}
+footer{border-top:1px solid var(--border);padding:.8rem 1.2rem;display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--mono)}
+@media(max-width:700px){.cg{grid-template-columns:1fr}.wg{grid-template-columns:repeat(4,1fr)}.krow{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 
 <header>
   <div>
-    <div class="logo">🍕 <span>Pizza</span>METRICS</div>
-    <div class="logo-sub">ANÁLISE DE TEMPOS OPERACIONAIS</div>
+    <div class="logo">Pizza<span>Metrics</span></div>
+    <div class="logo-sub">BONITÀ PIZZARIA · ANÁLISE DE TEMPOS</div>
   </div>
-  <div class="header-right">
-    <div id="live-clock">--:--:--</div>
-    <div id="api-badge" class="api-badge demo">● DEMO</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span id="clk" style="font-size:12px;font-family:var(--mono);color:var(--muted)"></span>
+    <span id="badge" class="badge bd">● DEMO</span>
   </div>
 </header>
 
-<div class="api-panel">
-  <label>BASE URL</label>
-  <input type="text" id="inp-url" placeholder="https://data.saipos.io/v1" value="https://data.saipos.io/v1">
-  <label>TOKEN</label>
-  <input type="password" id="inp-token" placeholder="Bearer token Saipos (começa com eyJ...)" title="Cole o token JWT completo que a Saipos enviou">
-  <label>LOJA ID</label>
-  <input type="text" id="inp-store" placeholder="76472" value="76472" style="max-width:130px" title="Seu Store ID (Menu > Dados da Loja > Código)">
-  <button class="btn btn-primary" onclick="fetchRealData()" title="Conecta à API Saipos real">▶ CONECTAR</button>
-  <button class="btn btn-ghost" onclick="loadDemoData()" title="Carrega dados de exemplo">★ DEMO</button>
-
-  <div class="period-tabs">
-    <button class="tab-btn active" onclick="setPeriod('today',this)">HOJE</button>
-    <button class="tab-btn" onclick="setPeriod('week',this)">SEMANA</button>
-    <button class="tab-btn" onclick="setPeriod('month',this)">MÊS</button>
-    <button class="tab-btn" onclick="setPeriod('compare',this)">COMPARAR</button>
+<div class="cbar">
+  <div class="ctitle">configuração da conexão</div>
+  <div class="crow">
+    <label>proxy url</label>
+    <input class="inp" type="text" id="gs-url"
+      value="https://script.google.com/macros/s/AKfycbxG901rjjQiN50YDNWmScqH2hshcsKgLO8LgqyD08yvwURlrkDO3fW0v1HIeVC0bnoKlw/exec"
+      style="max-width:600px">
   </div>
+  <div class="crow">
+    <label>token</label>
+    <input class="inp" type="password" id="tk"
+      value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXkiOiI2YWE1MmQ2OC0zZWZiLTZlZWYtODYyOS00ZTNmMWU2MDJmNTgiLCJpYXQiOjE3NzkyODY2Nzh9.1XkX4VYKQT15YgNbbuTx-0q-PdaFLAz_I7ggPUmyjCI">
+    <label style="min-width:56px">loja id</label>
+    <input class="inp" type="text" id="sid" value="76472" style="max-width:100px;flex:none">
+    <select class="inp" id="sel-days" style="max-width:180px;flex:none">
+      <option value="7">últimos 7 dias</option>
+      <option value="14" selected>últimos 14 dias</option>
+      <option value="28">últimos 28 dias</option>
+    </select>
+    <button class="btn btp" onclick="conectar()">▶ CONECTAR</button>
+    <button class="btn" onclick="loadDemo()">DEMO</button>
+    <span id="fstatus" style="font-size:11px;color:var(--muted);font-family:var(--mono)"></span>
+  </div>
+  <div id="info" class="info"></div>
 </div>
 
-<main>
+<div class="tabs" id="ptabs">
+  <button class="tab a" data-p="all">tudo</button>
+  <button class="tab" data-p="today">hoje</button>
+  <button class="tab" data-p="week">semana</button>
+  <button class="tab" data-p="month">mês</button>
+</div>
 
-  <!-- KPI CARDS -->
-  <div class="kpi-row" id="kpi-row">
-    <div class="kpi-card accent-red">
-      <div class="kpi-label">T. COZINHA MÉDIO</div>
-      <div class="kpi-value" id="kpi-cozinha" style="color:var(--accent)">--</div>
-      <div class="kpi-unit">minutos</div>
-      <div class="kpi-delta neutral" id="delta-cozinha">—</div>
-    </div>
-    <div class="kpi-card accent-orange">
-      <div class="kpi-label">T. ENTREGA MÉDIO</div>
-      <div class="kpi-value" id="kpi-entrega" style="color:var(--accent2)">--</div>
-      <div class="kpi-unit">minutos</div>
-      <div class="kpi-delta neutral" id="delta-entrega">—</div>
-    </div>
-    <div class="kpi-card accent-gold">
-      <div class="kpi-label">T. TOTAL MÉDIO</div>
-      <div class="kpi-value" id="kpi-total" style="color:var(--accent3)">--</div>
-      <div class="kpi-unit">minutos</div>
-      <div class="kpi-delta neutral" id="delta-total">—</div>
-    </div>
-    <div class="kpi-card accent-green">
-      <div class="kpi-label">PEDIDOS</div>
-      <div class="kpi-value" id="kpi-pedidos" style="color:var(--ok)">--</div>
-      <div class="kpi-unit">no período</div>
-      <div class="kpi-delta neutral" id="delta-pedidos">—</div>
-    </div>
-    <div class="kpi-card accent-blue">
-      <div class="kpi-label">SLA ≤ 45 MIN</div>
-      <div class="kpi-value" id="kpi-sla" style="color:#60a5fa">--</div>
-      <div class="kpi-unit">% dentro do prazo</div>
-      <div class="kpi-delta neutral" id="delta-sla">—</div>
-    </div>
-  </div>
-
-  <!-- SLA PROGRESS BARS -->
-  <div class="sla-bar-wrap">
-    <div class="sla-label">SLA<br>BREAKDOWN</div>
-    <div class="sla-progress-group">
-      <div class="sla-progress-label"><span>≤ 30 min (EXCELENTE)</span><span id="sla-ex-pct">—</span></div>
-      <div class="sla-progress-bar"><div class="sla-fill fill-ok" id="sla-ex-bar" style="width:0%"></div></div>
-      <div class="sla-progress-label"><span>31–45 min (OK)</span><span id="sla-ok-pct">—</span></div>
-      <div class="sla-progress-bar"><div class="sla-fill fill-warn" id="sla-ok-bar" style="width:0%"></div></div>
-      <div class="sla-progress-label"><span>> 45 min (CRÍTICO)</span><span id="sla-bad-pct">—</span></div>
-      <div class="sla-progress-bar"><div class="sla-fill fill-bad" id="sla-bad-bar" style="width:0%"></div></div>
-    </div>
-    <div style="font-family:var(--mono);font-size:0.7rem;color:var(--muted);text-align:right;min-width:120px;">
-      <div>META COZINHA</div>
-      <div style="font-size:1.1rem;color:var(--accent);font-family:var(--display)">20 MIN</div>
-      <div style="margin-top:6px">META ENTREGA</div>
-      <div style="font-size:1.1rem;color:var(--accent2);font-family:var(--display)">15 MIN</div>
-    </div>
-  </div>
-
-  <!-- WEEKDAY SUMMARY -->
-  <div id="weekday-section">
-    <div style="font-family:var(--display);font-size:1rem;letter-spacing:3px;color:var(--muted);margin-bottom:0.6rem;">
-      RESUMO POR DIA DA SEMANA — ÚLTIMAS 4 SEMANAS
-    </div>
-    <div class="weekday-grid" id="weekday-grid"></div>
-  </div>
-
-  <!-- CHARTS ROW 1 -->
-  <div class="charts-grid">
-    <div class="chart-card">
-      <div class="chart-title">EVOLUÇÃO DIÁRIA</div>
-      <div class="chart-subtitle">COZINHA · ENTREGA · TOTAL — MÉDIA POR DIA</div>
-      <div class="chart-container tall">
-        <canvas id="chart-daily"></canvas>
-      </div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">DISTRIBUIÇÃO DE FREQUÊNCIA</div>
-      <div class="chart-subtitle">HISTOGRAMA — TEMPO TOTAL (MIN)</div>
-      <div class="chart-container tall">
-        <canvas id="chart-hist"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- CHARTS ROW 2 -->
-  <div class="charts-grid">
-    <div class="chart-card full">
-      <div class="chart-title">COMPARATIVO MESMO DIA — SEMANAS ANTERIORES</div>
-      <div class="chart-subtitle" id="compare-subtitle">SEG × SEG × SEG × SEG — T. TOTAL MÉDIO POR HORA</div>
-      <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
-        <button class="tab-btn active" onclick="setCompareDay(1,this)">SEG</button>
-        <button class="tab-btn" onclick="setCompareDay(2,this)">TER</button>
-        <button class="tab-btn" onclick="setCompareDay(3,this)">QUA</button>
-        <button class="tab-btn" onclick="setCompareDay(4,this)">QUI</button>
-        <button class="tab-btn" onclick="setCompareDay(5,this)">SEX</button>
-        <button class="tab-btn" onclick="setCompareDay(6,this)">SÁB</button>
-        <button class="tab-btn" onclick="setCompareDay(0,this)">DOM</button>
-      </div>
-      <div class="chart-container">
-        <canvas id="chart-compare"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- CHARTS ROW 3 -->
-  <div class="charts-grid">
-    <div class="chart-card">
-      <div class="chart-title">BOXPLOT — DISPERSÃO</div>
-      <div class="chart-subtitle">MIN · P25 · MEDIANA · P75 · MAX POR DIA</div>
-      <div class="chart-container tall">
-        <canvas id="chart-box"></canvas>
-      </div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">MAPA DE CALOR — HORA × DIA</div>
-      <div class="chart-subtitle">TEMPO TOTAL MÉDIO POR FAIXA HORÁRIA</div>
-      <div style="margin-top:0.5rem;overflow-x:auto;" id="heatmap-wrap"></div>
-    </div>
-  </div>
-
-  <!-- PEDIDOS TABLE -->
-  <div class="table-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-      <div>
-        <div class="chart-title">ÚLTIMOS PEDIDOS</div>
-        <div class="chart-subtitle">DETALHE DE TEMPOS POR PEDIDO</div>
-      </div>
-      <input type="text" id="table-search" placeholder="buscar pedido…"
-        style="background:var(--bg);border:1px solid var(--border);color:var(--text);
-               font-family:var(--mono);font-size:0.75rem;padding:6px 12px;
-               border-radius:3px;outline:none;width:200px;"
-        oninput="filterTable(this.value)">
-    </div>
-    <div style="overflow-x:auto;">
-      <table id="orders-table">
-        <thead>
-          <tr>
-            <th onclick="sortTable(0)">PEDIDO ↕</th>
-            <th onclick="sortTable(1)">DATA/HORA ↕</th>
-            <th onclick="sortTable(2)">COZINHA ↕</th>
-            <th onclick="sortTable(3)">ENTREGA ↕</th>
-            <th onclick="sortTable(4)">TOTAL ↕</th>
-            <th onclick="sortTable(5)">STATUS ↕</th>
-            <th>CANAL</th>
-          </tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-      </table>
-    </div>
-    <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-top:0.8rem;text-align:right;">
-      Exibindo <span id="table-count">0</span> pedidos
-    </div>
-  </div>
-
-</main>
+<main id="mc"></main>
 
 <footer>
-  <div>PIZZAMETRICS v2.0 — SAIPOS API INTEGRATION</div>
-  <div id="last-update">Último sync: —</div>
-  <div>Desenvolvido para análise operacional de pizzaria delivery</div>
+  <span>PizzaMetrics · Bonità Pizzaria · loja 76472</span>
+  <span id="last-sync">—</span>
 </footer>
 
 <script>
-// ════════════════════════════════════════
-//  ESTADO GLOBAL
-// ════════════════════════════════════════
-let state = {
-  orders: [],
-  period: 'today',
-  compareDay: 1,
-  charts: {},
-  isLive: false
+// ═══════════════════════════════════════════════
+//  CONFIGURAÇÃO — edite apenas aqui se necessário
+// ═══════════════════════════════════════════════
+const CONFIG = {
+  gsUrl: 'https://script.google.com/macros/s/AKfycbxG901rjjQiN50YDNWmScqH2hshcsKgLO8LgqyD08yvwURlrkDO3fW0v1HIeVC0bnoKlw/exec',
+  token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXkiOiI2YWE1MmQ2OC0zZWZiLTZlZWYtODYyOS00ZTNmMWU2MDJmNTgiLCJpYXQiOjE3NzkyODY2Nzh9.1XkX4VYKQT15YgNbbuTx-0q-PdaFLAz_I7ggPUmyjCI',
+  storeId: '76472',
+  metaCozinha: 20,
+  metaEntrega: 15,
+  metaTotal:   35
 };
-const DAYS_PT = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
-const DAYS_FULL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 
-// ════════════════════════════════════════
-//  CLOCK
-// ════════════════════════════════════════
-function updateClock() {
-  const n = new Date();
-  const t = n.toLocaleTimeString('pt-BR');
-  document.getElementById('live-clock').textContent = t;
-}
-setInterval(updateClock, 1000);
-updateClock();
+const DAYS_PT=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const DAYS_FULL=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+let S={orders:[],period:'all',cmpDay:1,charts:{},live:false,sortCol:'total',sortAsc:false,tableData:[]};
 
-// ════════════════════════════════════════
-//  PERIOD / COMPARE DAY
-// ════════════════════════════════════════
-function setPeriod(p, el) {
-  state.period = p;
-  document.querySelectorAll('.period-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  render();
-}
-function setCompareDay(d, el) {
-  state.compareDay = d;
-  document.querySelectorAll('#chart-compare').forEach(() => {});
-  document.querySelectorAll('.tab-btn[onclick^="setCompareDay"]').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  updateCompareChart();
-  const lbl = DAYS_FULL[d];
-  document.getElementById('compare-subtitle').textContent =
-    `${lbl.toUpperCase()} × ${lbl.toUpperCase()} × ${lbl.toUpperCase()} × ${lbl.toUpperCase()} — T. TOTAL MÉDIO POR HORA`;
-}
+// Pré-preenche campos com CONFIG
+document.getElementById('gs-url').value = CONFIG.gsUrl;
+document.getElementById('tk').value     = CONFIG.token;
+document.getElementById('sid').value    = CONFIG.storeId;
 
-// ════════════════════════════════════════
-//  GERADOR DE DADOS DEMO
-// ════════════════════════════════════════
-function gauss(mean, std) {
-  let u=0, v=0;
-  while(u===0) u=Math.random();
-  while(v===0) v=Math.random();
-  return mean + std * Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
-}
+setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString('pt-BR');},1000);
+document.getElementById('ptabs').addEventListener('click',e=>{
+  const b=e.target.closest('.tab');if(!b)return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('a'));b.classList.add('a');
+  S.period=b.dataset.p;render();
+});
 
-function generateDemo() {
-  const orders = [];
-  const now = new Date();
-  const channels = ['iFood','WhatsApp','App Próprio','Telefone'];
-  const weekMultiplier = [0.6, 0.7, 0.75, 0.8, 0.9, 1.0, 1.3, 1.5, 1.4, 1.2, 1.1, 1.3,
-                           1.5, 1.3, 1.2, 1.1, 1.3, 1.6, 1.8, 1.7, 1.5, 1.2, 1.0, 0.8];
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+const med=a=>{if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y);const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+const pct=(a,p)=>{if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y);return s[Math.max(0,Math.ceil(p/100*s.length)-1)];};
+function gauss(m,sd){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return m+sd*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
 
-  for (let d = 27; d >= 0; d--) {
-    const date = new Date(now);
-    date.setDate(now.getDate() - d);
-    const weekday = date.getDay();
-    // Finais de semana têm mais pedidos
-    const dayLoad = (weekday === 5 || weekday === 6) ? 35 : (weekday === 0 ? 28 : 18);
-
-    for (let h = 10; h <= 23; h++) {
-      const hourLoad = Math.round(weekMultiplier[h] * dayLoad * 0.15 * (0.7 + Math.random() * 0.6));
-      for (let i = 0; i < hourLoad; i++) {
-        const orderTime = new Date(date);
-        orderTime.setHours(h, Math.floor(Math.random() * 60), 0, 0);
-
-        // Cozinha: 12-30 min, piora em horários de pico
-        const peakPenalty = (h >= 19 && h <= 21) ? 5 : 0;
-        let cozinha = Math.max(8, Math.round(gauss(18 + peakPenalty, 4)));
-
-        // Entrega: 15-40 min, piora fins de semana e pico
-        let entrega = Math.max(10, Math.round(gauss(22 + peakPenalty + (weekday>=5?3:0), 5)));
-
-        const total = cozinha + entrega;
-        const id = `PED-${String(orders.length+1).padStart(5,'0')}`;
-        const ch = channels[Math.floor(Math.random() * channels.length)];
-
-        orders.push({
-          id, orderTime, weekday, hour: h,
-          cozinha, entrega, total, channel: ch,
-          status: total <= 30 ? 'EXCELENTE' : total <= 45 ? 'OK' : 'CRÍTICO'
-        });
+function loadDemo(){
+  const orders=[],ch=['iFood','WhatsApp','App','Telefone'];
+  const now=new Date();
+  for(let d=27;d>=0;d--){
+    const date=new Date(now);date.setDate(now.getDate()-d);
+    const wd=date.getDay(),load=(wd>=5?35:wd===0?28:18);
+    for(let h=10;h<=23;h++){
+      const n=Math.round(load*.12*(.6+Math.random()*.8));
+      for(let i=0;i<n;i++){
+        const pk=(h>=19&&h<=21)?4:0,we=(wd>=5?3:0);
+        const cz=Math.max(8,Math.round(gauss(18+pk,4)));
+        const en=Math.max(8,Math.round(gauss(18+pk+we,5)));
+        const tot=cz+en;
+        const t=new Date(date);t.setHours(h,Math.floor(Math.random()*60),0,0);
+        orders.push({id:`D-${orders.length+1}`,orderTime:t,weekday:t.getDay(),hour:h,cozinha:cz,entrega:en,total:tot,channel:ch[Math.floor(Math.random()*4)],valor:Math.round(gauss(65,20)),status:tot<=30?'excelente':tot<=45?'ok':'crítico'});
       }
     }
   }
+  S.orders=orders;S.live=false;
+  setBadge('d');showInfo('');
+  document.getElementById('fstatus').textContent=`${orders.length} pedidos (demo)`;
+  document.getElementById('last-sync').textContent='Modo demonstração';
+  render();
+}
+
+function mapOrder(r){
+  try{
+    if(r.canceled==='Y'||r.canceled===true)return null;
+    const created=new Date(r.created_at);
+    if(isNaN(created))return null;
+    const en=parseFloat(r.delivery?.delivery_time||0);
+    let cz=0;
+    if(r.notes){
+      const match=r.notes.match(/Entrega para às (\d{2}):(\d{2}):(\d{2})/i)||r.notes.match(/Entrega para (\d{2}):(\d{2})/i);
+      if(match){
+        const tProm=new Date(created);
+        tProm.setHours(parseInt(match[1]),parseInt(match[2]),parseInt(match[3]||0),0);
+        if(tProm<created)tProm.setDate(tProm.getDate()+1);
+        const totalProm=Math.round((tProm-created)/60000);
+        cz=Math.max(5,totalProm-Math.max(en,15));
+      }
+    }
+    const tot=cz+en>0?cz+en:Math.max(20,en+15);
+    if(!cz)cz=Math.round(tot*0.55);
+    const finalEn=Math.max(0,tot-cz);
+    let channel='Próprio';
+    if(r.partner_sale?.partner_name)channel=r.partner_sale.partner_name;
+    else if(r.id_sale_type===2)channel='Delivery';
+    else if(r.id_sale_type===1)channel='Balcão';
+    else if(r.id_sale_type===3)channel='Mesa';
+    return{
+      id:`#${r.sale_number||r.id_sale}`,
+      orderTime:created,weekday:created.getDay(),hour:created.getHours(),
+      cozinha:Math.max(1,Math.round(cz)),entrega:Math.max(0,Math.round(finalEn)),total:Math.max(5,Math.round(tot)),
+      channel,valor:parseFloat(r.total_amount||0),
+      status:tot<=30?'excelente':tot<=45?'ok':'crítico'
+    };
+  }catch(e){return null;}
+}
+
+async function conectar(){
+  const gsUrl=document.getElementById('gs-url').value.trim();
+  const token=document.getElementById('tk').value.trim().replace(/^Bearer\s+/i,'');
+  const days=parseInt(document.getElementById('sel-days').value);
+  if(!gsUrl){alert('URL do proxy não preenchida');return;}
+  if(!token){alert('Token não preenchido');return;}
+  setBadge('k');showInfo('<span class="spin"></span> buscando dados da Saipos…');
+  document.getElementById('fstatus').textContent='buscando…';
+  try{
+    const allOrders=[],now=new Date(),windows=[];
+    for(let i=0;i<days;i+=14){
+      const end=new Date(now);end.setDate(now.getDate()-i);
+      const start=new Date(now);start.setDate(now.getDate()-Math.min(i+14,days));
+      windows.push({start,end});
+    }
+    for(let w=0;w<windows.length;w++){
+      const {start,end}=windows[w];
+      const fmt=d=>d.toISOString().slice(0,19);
+      const params=new URLSearchParams({token,col:'created_at',start:fmt(start),end:fmt(end),limit:1000});
+      document.getElementById('fstatus').textContent=`janela ${w+1}/${windows.length}…`;
+      const resp=await fetch(`${gsUrl}?${params}`);
+      if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+      const json=await resp.json();
+      let raw=[];
+      if(Array.isArray(json))raw=json;
+      else{
+        const arrKey=Object.keys(json).find(k=>Array.isArray(json[k])&&json[k].length>0&&json[k][0]?.id_sale);
+        if(arrKey)raw=json[arrKey];
+        else if(json.error)throw new Error(`Saipos: ${json.error}`);
+      }
+      raw.forEach(r=>{const o=mapOrder(r);if(o)allOrders.push(o);});
+    }
+    if(!allOrders.length)throw new Error('Nenhum pedido de entrega encontrado no período.');
+    S.orders=allOrders;S.live=true;
+    setBadge('l');
+    showInfo(`<strong style="color:var(--ok)">✓ conectado!</strong> ${allOrders.length} pedidos carregados.`);
+    document.getElementById('fstatus').textContent=`${allOrders.length} pedidos`;
+    document.getElementById('last-sync').textContent='Último sync: '+new Date().toLocaleString('pt-BR');
+    render();
+  }catch(err){
+    console.error(err);setBadge('e');
+    showInfo(`<strong style="color:var(--bad)">Erro:</strong> ${err.message}`);
+    document.getElementById('fstatus').textContent='erro';
+  }
+}
+
+function filterByPeriod(orders){
+  const now=new Date(),today=new Date(now);today.setHours(0,0,0,0);
+  const wk=new Date(today);wk.setDate(today.getDate()-today.getDay());
+  const mo=new Date(now.getFullYear(),now.getMonth(),1);
+  if(S.period==='today')return orders.filter(o=>o.orderTime>=today);
+  if(S.period==='week')return orders.filter(o=>o.orderTime>=wk);
+  if(S.period==='month')return orders.filter(o=>o.orderTime>=mo);
   return orders;
 }
 
-// ════════════════════════════════════════
-//  FILTRO POR PERÍODO
-// ════════════════════════════════════════
-function filterByPeriod(orders) {
-  const now = new Date();
-  const today = new Date(now); today.setHours(0,0,0,0);
-  const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  if (state.period === 'today')
-    return orders.filter(o => o.orderTime >= today);
-  if (state.period === 'week')
-    return orders.filter(o => o.orderTime >= weekStart);
-  if (state.period === 'month')
-    return orders.filter(o => o.orderTime >= monthStart);
-  return orders; // compare = all
+function setBadge(t){const el=document.getElementById('badge');const m={d:['● DEMO','badge bd'],l:['● LIVE','badge bl'],e:['● ERRO','badge be'],k:['BUSCANDO…','badge bk']};el.textContent=m[t][0];el.className=m[t][1];}
+function showInfo(html){const el=document.getElementById('info');if(!html){el.style.display='none';return;}el.innerHTML=html;el.style.display='block';}
+function dChart(id){if(S.charts[id]){S.charts[id].destroy();delete S.charts[id];}}
+function cOpts(yL='min'){
+  const gc='rgba(255,255,255,.04)',tc='#555';
+  return{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc,font:{size:10},boxWidth:10,padding:10}},tooltip:{backgroundColor:'#161616',borderColor:'#303030',borderWidth:1,titleColor:'#e8e8e8',bodyColor:tc}},scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{title:{display:!!yL,text:yL,color:tc,font:{size:10}},ticks:{color:tc,font:{size:10}},grid:{color:gc}}}};
 }
 
-// ════════════════════════════════════════
-//  ESTATÍSTICAS
-// ════════════════════════════════════════
-function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
-function median(arr) {
-  if (!arr.length) return 0;
-  const s = [...arr].sort((a,b)=>a-b);
-  const m = Math.floor(s.length/2);
-  return s.length%2 ? s[m] : (s[m-1]+s[m])/2;
-}
-function percentile(arr, p) {
-  if (!arr.length) return 0;
-  const s = [...arr].sort((a,b)=>a-b);
-  const idx = Math.ceil(p/100 * s.length) - 1;
-  return s[Math.max(0,idx)];
-}
-function stddev(arr) {
-  if (arr.length < 2) return 0;
-  const m = avg(arr);
-  return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length);
-}
+// ── RENDER PRINCIPAL ──────────────────────────────────────
+function render(){
+  const filtered=filterByPeriod(S.orders);
+  const el=document.getElementById('mc');
+  if(!filtered.length){el.innerHTML='<div class="stmsg">nenhum pedido no período</div>';return;}
 
-// ════════════════════════════════════════
-//  RENDER PRINCIPAL
-// ════════════════════════════════════════
-function render() {
-  const filtered = filterByPeriod(state.orders);
-  if (!filtered.length) {
-    document.getElementById('kpi-cozinha').textContent = '--';
-    return;
-  }
+  const cz=filtered.map(o=>o.cozinha),en=filtered.map(o=>o.entrega),to=filtered.map(o=>o.total);
+  const aC=avg(cz),aE=avg(en),aT=avg(to);
+  const s30=filtered.filter(o=>o.total<=30).length/filtered.length*100;
+  const s45=filtered.filter(o=>o.total>30&&o.total<=45).length/filtered.length*100;
+  const sBad=filtered.filter(o=>o.total>45).length/filtered.length*100;
+  const dtag=(v,tgt)=>{const d=v-tgt;if(Math.abs(d)<.5)return`<span class="kt tn">≈ meta</span>`;if(d>0)return`<span class="kt tov">+${d.toFixed(1)}</span>`;return`<span class="kt tok">${d.toFixed(1)}</span>`;};
 
-  const cz = filtered.map(o=>o.cozinha);
-  const en = filtered.map(o=>o.entrega);
-  const to = filtered.map(o=>o.total);
+  el.innerHTML=`
+  <div class="krow">
+    <div class="kc r">${dtag(aC,CONFIG.metaCozinha)}<div class="kl">COZINHA (MÉDIA)</div><div class="kv" style="color:var(--accent)">${aC.toFixed(1)}</div><div class="ku">min · meta ${CONFIG.metaCozinha}min</div></div>
+    <div class="kc o">${dtag(aE,CONFIG.metaEntrega)}<div class="kl">ENTREGA (MÉDIA)</div><div class="kv" style="color:var(--accent2)">${aE.toFixed(1)}</div><div class="ku">min · meta ${CONFIG.metaEntrega}min</div></div>
+    <div class="kc g2">${dtag(aT,CONFIG.metaTotal)}<div class="kl">TOTAL (MÉDIA)</div><div class="kv" style="color:var(--gold)">${aT.toFixed(1)}</div><div class="ku">min · meta ${CONFIG.metaTotal}min</div></div>
+    <div class="kc gn"><div class="kl">PEDIDOS</div><div class="kv" style="color:var(--ok)">${filtered.length}</div><div class="ku">no período</div></div>
+    <div class="kc b"><div class="kl">SLA ≤ 45MIN</div><div class="kv" style="color:var(--blue)">${(s30+s45).toFixed(1)}%</div><div class="ku">dentro do prazo</div></div>
+  </div>
+  <div class="sc">
+    <div class="sctitle">breakdown sla</div>
+    <div class="sr"><div class="sl">≤ 30min — excelente</div><div class="stk"><div class="sf" style="background:var(--ok);width:${s30.toFixed(1)}%"></div></div><div class="sp" style="color:var(--ok)">${s30.toFixed(1)}%</div></div>
+    <div class="sr"><div class="sl">31–45min — ok</div><div class="stk"><div class="sf" style="background:var(--warn);width:${s45.toFixed(1)}%"></div></div><div class="sp" style="color:var(--warn)">${s45.toFixed(1)}%</div></div>
+    <div class="sr"><div class="sl">> 45min — crítico</div><div class="stk"><div class="sf" style="background:var(--bad);width:${sBad.toFixed(1)}%"></div></div><div class="sp" style="color:var(--bad)">${sBad.toFixed(1)}%</div></div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">média por dia da semana</div>
+  <div class="wg" id="wg"></div>
+  <div class="cg">
+    <div class="cc"><div class="ct">Evolução Diária</div><div class="cs">média cozinha · entrega · total por dia</div><div style="position:relative;height:220px"><canvas id="c-daily"></canvas></div></div>
+    <div class="cc"><div class="ct">Distribuição · Tempo Total</div><div class="cs">frequência por faixa de minutos</div><div style="position:relative;height:220px"><canvas id="c-hist"></canvas></div></div>
+  </div>
+  <div class="cg">
+    <div class="cc fw">
+      <div class="ct">Comparativo Mesmo Dia — 4 Semanas</div>
+      <div class="dtb" id="dtb">${['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map((d,i)=>`<button data-wd="${[1,2,3,4,5,6,0][i]}" class="${S.cmpDay===[1,2,3,4,5,6,0][i]?'a':''}">${d}</button>`).join('')}</div>
+      <div id="csub" class="cs"></div>
+      <div style="position:relative;height:190px"><canvas id="c-cmp"></canvas></div>
+    </div>
+  </div>
+  <div class="cg">
+    <div class="cc"><div class="ct">Percentis por Dia</div><div class="cs">p25 · mediana · p75 do tempo total</div><div style="position:relative;height:220px"><canvas id="c-pct"></canvas></div></div>
+    <div class="cc"><div class="ct">Mapa de Calor</div><div class="cs">tempo total médio · hora × dia</div><div id="hm" style="margin-top:6px;overflow-x:auto"></div></div>
+  </div>
 
-  // ── KPIs ──
-  const avgCz = avg(cz), avgEn = avg(en), avgTo = avg(to);
-  document.getElementById('kpi-cozinha').textContent = avgCz.toFixed(1);
-  document.getElementById('kpi-entrega').textContent = avgEn.toFixed(1);
-  document.getElementById('kpi-total').textContent = avgTo.toFixed(1);
-  document.getElementById('kpi-pedidos').textContent = filtered.length;
+  <!-- TABELA DE PEDIDOS -->
+  <div class="tbl-wrap">
+    <div class="tbl-header">
+      <div>
+        <div class="ct">Pedidos — do mais demorado ao mais rápido</div>
+        <div class="cs">clique no cabeçalho para reordenar · <span id="tbl-count"></span></div>
+      </div>
+      <input class="tbl-search" id="tbl-search" placeholder="buscar pedido, canal…" oninput="filterTable(this.value)">
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortTable('id')">PEDIDO</th>
+            <th onclick="sortTable('orderTime')">DATA/HORA</th>
+            <th onclick="sortTable('cozinha')">🍕 COZINHA</th>
+            <th onclick="sortTable('entrega')">🛵 ENTREGA</th>
+            <th onclick="sortTable('total')">⏱ TOTAL ↓</th>
+            <th onclick="sortTable('channel')">CANAL</th>
+            <th onclick="sortTable('status')">STATUS</th>
+            <th onclick="sortTable('valor')">VALOR</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+    <div class="tbl-foot" id="tbl-foot"></div>
+  </div>
+  `;
 
-  const sla = filtered.filter(o=>o.total<=45).length / filtered.length * 100;
-  document.getElementById('kpi-sla').textContent = sla.toFixed(1) + '%';
-
-  const slaEx = filtered.filter(o=>o.total<=30).length / filtered.length * 100;
-  const slaOk = filtered.filter(o=>o.total>30&&o.total<=45).length / filtered.length * 100;
-  const slaBad = filtered.filter(o=>o.total>45).length / filtered.length * 100;
-
-  // Deltas (vs. semana anterior)
-  setDelta('delta-cozinha', avgCz, 20);
-  setDelta('delta-entrega', avgEn, 15);
-  setDelta('delta-total', avgTo, 42);
-  setDeltaRaw('delta-sla', sla, 85, true);
-  setDeltaRaw('delta-pedidos', filtered.length, 0, null);
-
-  // SLA bars
-  animateBar('sla-ex-bar', slaEx);
-  animateBar('sla-ok-bar', slaOk);
-  animateBar('sla-bad-bar', slaBad);
-  document.getElementById('sla-ex-pct').textContent = slaEx.toFixed(1)+'%';
-  document.getElementById('sla-ok-pct').textContent = slaOk.toFixed(1)+'%';
-  document.getElementById('sla-bad-pct').textContent = slaBad.toFixed(1)+'%';
-
-  // Weekday
-  renderWeekday(filtered);
-
-  // Charts
-  renderDailyChart(filtered);
-  renderHistogram(filtered);
-  updateCompareChart();
-  renderBoxPlot(filtered);
-  renderHeatmap(filtered);
-  renderTable(filtered);
-
-  // Timestamp
-  document.getElementById('last-update').textContent =
-    'Último sync: ' + new Date().toLocaleString('pt-BR');
-}
-
-function setDelta(id, val, target) {
-  const el = document.getElementById(id);
-  const diff = val - target;
-  if (Math.abs(diff) < 0.5) { el.textContent = '≈ META'; el.className = 'kpi-delta neutral'; }
-  else if (diff > 0) { el.textContent = `+${diff.toFixed(1)}`; el.className = 'kpi-delta up'; }
-  else { el.textContent = `${diff.toFixed(1)}`; el.className = 'kpi-delta down'; }
-}
-function setDeltaRaw(id, val, target, higherBetter) {
-  const el = document.getElementById(id);
-  if (higherBetter === null) { el.textContent = `${val}`; el.className = 'kpi-delta neutral'; return; }
-  const diff = val - target;
-  if (higherBetter) {
-    if (diff >= 0) { el.textContent = `+${diff.toFixed(1)}%`; el.className = 'kpi-delta down'; }
-    else { el.textContent = `${diff.toFixed(1)}%`; el.className = 'kpi-delta up'; }
-  }
-}
-function animateBar(id, pct) {
-  setTimeout(() => document.getElementById(id).style.width = Math.min(100,pct).toFixed(1)+'%', 50);
-}
-
-// ────────────────────────────────────────
-//  WEEKDAY CARDS
-// ────────────────────────────────────────
-function renderWeekday(orders) {
-  const grid = document.getElementById('weekday-grid');
-  const byDay = {};
-  for (let d = 0; d < 7; d++) byDay[d] = [];
-  orders.forEach(o => byDay[o.weekday].push(o.total));
-
-  const todayWd = new Date().getDay();
-  const maxAvg = Math.max(...Object.values(byDay).map(a => avg(a) || 0)) || 1;
-
-  grid.innerHTML = '';
-  for (let d = 0; d < 7; d++) {
-    const a = byDay[d];
-    const av = avg(a);
-    const isToday = d === todayWd;
-    const color = av <= 30 ? 'var(--ok)' : av <= 45 ? 'var(--warn)' : 'var(--bad)';
-    const barW = (av / maxAvg * 100).toFixed(1);
-    const card = document.createElement('div');
-    card.className = 'wd-card';
-    card.innerHTML = `
-      <div class="wd-name ${isToday?'today':''}">${DAYS_PT[d]}</div>
-      <div class="wd-time" style="color:${color}">${av ? av.toFixed(1)+'m' : '--'}</div>
-      <div class="wd-bar" style="background:${color};width:${barW}%;max-width:100%"></div>
-      <div class="wd-orders">${a.length} pedidos</div>
-    `;
-    grid.appendChild(card);
-  }
-}
-
-// ────────────────────────────────────────
-//  DAILY LINE CHART
-// ────────────────────────────────────────
-function renderDailyChart(orders) {
-  const byDate = {};
-  orders.forEach(o => {
-    const k = o.orderTime.toLocaleDateString('pt-BR');
-    if (!byDate[k]) byDate[k] = {cz:[], en:[], to:[]};
-    byDate[k].cz.push(o.cozinha);
-    byDate[k].en.push(o.entrega);
-    byDate[k].to.push(o.total);
-  });
-  const labels = Object.keys(byDate).slice(-14);
-  const dataCz = labels.map(k => +avg(byDate[k].cz).toFixed(1));
-  const dataEn = labels.map(k => +avg(byDate[k].en).toFixed(1));
-  const dataTo = labels.map(k => +avg(byDate[k].to).toFixed(1));
-
-  destroyChart('chart-daily');
-  const ctx = document.getElementById('chart-daily').getContext('2d');
-  state.charts['chart-daily'] = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label:'Cozinha', data:dataCz, borderColor:'#ff4500', backgroundColor:'rgba(255,69,0,.08)',
-          tension:.4, pointRadius:3, pointHoverRadius:6 },
-        { label:'Entrega', data:dataEn, borderColor:'#ff8c00', backgroundColor:'rgba(255,140,0,.08)',
-          tension:.4, pointRadius:3, pointHoverRadius:6 },
-        { label:'Total',   data:dataTo, borderColor:'#ffd700', backgroundColor:'rgba(255,215,0,.1)',
-          tension:.4, pointRadius:3, pointHoverRadius:6, borderWidth:2 },
-        { label:'Meta Total', data:labels.map(()=>45), borderColor:'rgba(239,68,68,.4)',
-          borderDash:[6,4], pointRadius:0, borderWidth:1 }
-      ]
-    },
-    options: chartOpts('Minutos')
-  });
-}
-
-// ────────────────────────────────────────
-//  HISTOGRAM
-// ────────────────────────────────────────
-function renderHistogram(orders) {
-  const buckets = [];
-  const labels = [];
-  for (let i = 10; i <= 70; i += 5) {
-    labels.push(`${i}–${i+4}`);
-    buckets.push(orders.filter(o => o.total >= i && o.total < i+5).length);
-  }
-  const colors = labels.map((l, i) => {
-    const v = 10 + i * 5;
-    return v <= 30 ? 'rgba(34,197,94,.7)' : v <= 45 ? 'rgba(245,158,11,.7)' : 'rgba(239,68,68,.7)';
+  document.getElementById('dtb').addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;
+    document.querySelectorAll('#dtb button').forEach(t=>t.classList.remove('a'));b.classList.add('a');
+    S.cmpDay=parseInt(b.dataset.wd);renderCmp();
   });
 
-  destroyChart('chart-hist');
-  const ctx = document.getElementById('chart-hist').getContext('2d');
-  state.charts['chart-hist'] = new Chart(ctx, {
-    type: 'bar',
-    data: { labels, datasets: [{ label:'Pedidos', data:buckets, backgroundColor:colors, borderRadius:2 }] },
-    options: { ...chartOpts('Pedidos'), plugins: { ...chartOpts('').plugins, legend:{ display:false } } }
-  });
+  renderWd(filtered);renderDaily(filtered);renderHist(filtered);renderCmp();renderPct(filtered);renderHeatmap(filtered);
+
+  // Tabela: ordena por total decrescente por padrão
+  S.tableData=[...filtered].sort((a,b)=>b.total-a.total);
+  S.sortCol='total';S.sortAsc=false;
+  drawTable(S.tableData);
 }
 
-// ────────────────────────────────────────
-//  COMPARE CHART (mesmo dia das últimas 4 semanas)
-// ────────────────────────────────────────
-function updateCompareChart() {
-  const d = state.compareDay;
-  const allOrders = state.orders;
-  const now = new Date();
-  const weeks = 4;
-  const datasets = [];
-  const colors = ['#ff4500','#ff8c00','#ffd700','#60a5fa'];
-
-  for (let w = 0; w < weeks; w++) {
-    // data alvo: o d-ésimo dia da semana, w semanas atrás
-    const target = new Date(now);
-    target.setDate(now.getDate() - now.getDay() - w * 7 + d);
-    target.setHours(0,0,0,0);
-    const next = new Date(target); next.setDate(target.getDate()+1);
-    const dayOrders = allOrders.filter(o => o.orderTime >= target && o.orderTime < next);
-
-    const byHour = {};
-    dayOrders.forEach(o => {
-      if (!byHour[o.hour]) byHour[o.hour] = [];
-      byHour[o.hour].push(o.total);
-    });
-    const hours = Array.from({length:14}, (_,i)=>i+10);
-    const data = hours.map(h => byHour[h] ? +avg(byHour[h]).toFixed(1) : null);
-    const label = target.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-    datasets.push({ label, data, borderColor:colors[w], backgroundColor:'transparent',
-      tension:.4, pointRadius:3, spanGaps:true });
-  }
-
-  destroyChart('chart-compare');
-  const ctx = document.getElementById('chart-compare').getContext('2d');
-  state.charts['chart-compare'] = new Chart(ctx, {
-    type: 'line',
-    data: { labels: Array.from({length:14},(_,i)=>`${i+10}h`), datasets },
-    options: chartOpts('Min (T. Total Médio)')
-  });
-}
-
-// ────────────────────────────────────────
-//  BOXPLOT (simulated with bar chart)
-// ────────────────────────────────────────
-function renderBoxPlot(orders) {
-  const days = DAYS_PT;
-  const byDay = {};
-  days.forEach((d,i) => byDay[i] = []);
-  orders.forEach(o => byDay[o.weekday].push(o.total));
-
-  const p25 = days.map((d,i) => percentile(byDay[i], 25));
-  const p50 = days.map((d,i) => Math.round(median(byDay[i])));
-  const p75 = days.map((d,i) => percentile(byDay[i], 75));
-  const min = days.map((d,i) => byDay[i].length ? Math.min(...byDay[i]) : 0);
-  const max = days.map((d,i) => byDay[i].length ? Math.max(...byDay[i]) : 0);
-
-  destroyChart('chart-box');
-  const ctx = document.getElementById('chart-box').getContext('2d');
-  state.charts['chart-box'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: days,
-      datasets: [
-        { label:'Min', data:min, backgroundColor:'rgba(96,165,250,.3)', stack:'box' },
-        { label:'P25–P75', data:p75.map((v,i)=>v-p25[i]), backgroundColor:'rgba(255,140,0,.6)', stack:'box' },
-        { label:'Mediana', data:p50.map((v,i)=>v-p25[i]).map(()=>1),
-          backgroundColor:'rgba(255,215,0,.9)', stack:'box' },
-        { label:'Max', data:max.map((v,i)=>v-p75[i]), backgroundColor:'rgba(239,68,68,.3)', stack:'box' },
-      ]
-    },
-    options: {
-      ...chartOpts('Minutos'),
-      scales: { x:{ stacked:true, ...axisStyle() }, y:{ stacked:true, ...axisStyle() } }
-    }
-  });
-}
-
-// ────────────────────────────────────────
-//  HEATMAP
-// ────────────────────────────────────────
-function renderHeatmap(orders) {
-  const matrix = {};
-  DAYS_PT.forEach((d,di) => {
-    matrix[di] = {};
-    for (let h = 10; h <= 23; h++) matrix[di][h] = [];
-  });
-  orders.forEach(o => {
-    if (matrix[o.weekday] && o.hour >= 10 && o.hour <= 23)
-      matrix[o.weekday][o.hour].push(o.total);
-  });
-
-  // find max for color scale
-  let globalMax = 0;
-  Object.values(matrix).forEach(row =>
-    Object.values(row).forEach(arr => { const a = avg(arr); if (a > globalMax) globalMax = a; })
-  );
-
-  const wrap = document.getElementById('heatmap-wrap');
-  const hours = Array.from({length:14}, (_,i)=>i+10);
-
-  let html = '<div class="heatmap-grid" style="grid-template-columns: auto repeat(14, 1fr);">';
-  // header
-  html += '<div></div>';
-  hours.forEach(h => html += `<div class="hm-header">${h}h</div>`);
-
-  DAYS_PT.forEach((day, di) => {
-    html += `<div class="hm-row-label">${day}</div>`;
-    hours.forEach(h => {
-      const vals = matrix[di][h];
-      const a = avg(vals);
-      const pct = globalMax ? a / globalMax : 0;
-      const r = Math.round(50 + pct * 205);
-      const g = Math.round(197 - pct * 180);
-      const b = Math.round(94 - pct * 90);
-      const bg = vals.length ? `rgb(${r},${g},${b})` : 'var(--border)';
-      const lbl = vals.length ? `${day} ${h}h — avg ${a.toFixed(1)}min (${vals.length} pedidos)` : '';
-      html += `<div class="hm-cell" style="background:${bg}" title="${lbl}"></div>`;
-    });
-  });
-  html += '</div>';
-  wrap.innerHTML = html;
-}
-
-// ────────────────────────────────────────
-//  TABLE
-// ────────────────────────────────────────
-let tableData = [];
-let sortCol = 1, sortAsc = false;
-
-function renderTable(orders) {
-  tableData = orders.slice(-200).reverse(); // last 200
-  drawTable(tableData);
-}
-
-function drawTable(data) {
-  const tbody = document.getElementById('table-body');
-  document.getElementById('table-count').textContent = data.length;
-  const rows = data.slice(0, 100).map(o => {
-    const pill = o.status === 'EXCELENTE' ? 'pill-ok' : o.status === 'OK' ? 'pill-warn' : 'pill-bad';
-    return `<tr>
-      <td>${o.id}</td>
-      <td>${o.orderTime.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
-      <td style="color:var(--accent)">${o.cozinha} min</td>
-      <td style="color:var(--accent2)">${o.entrega} min</td>
-      <td style="color:var(--accent3);font-weight:600">${o.total} min</td>
-      <td><span class="pill ${pill}">${o.status}</span></td>
+// ── TABELA ────────────────────────────────────────────────
+function drawTable(data){
+  const maxTotal=Math.max(...data.map(o=>o.total),1);
+  const rows=data.slice(0,500).map((o,i)=>{
+    const pill=o.status==='excelente'?'p-ok':o.status==='ok'?'p-warn':'p-bad';
+    const barW=Math.round(o.total/maxTotal*80);
+    const barCol=o.total<=30?'var(--ok)':o.total<=45?'var(--warn)':'var(--bad)';
+    return`<tr>
+      <td style="color:var(--muted)">${o.id}</td>
+      <td>${o.orderTime.toLocaleDateString('pt-BR')} ${o.orderTime.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td style="color:var(--accent)">${o.cozinha}min</td>
+      <td style="color:var(--accent2)">${o.entrega}min</td>
+      <td><strong style="color:${barCol}">${o.total}min</strong><span class="t-bar" style="width:${barW}px;background:${barCol};opacity:.4"></span></td>
       <td style="color:var(--muted)">${o.channel}</td>
+      <td><span class="pill ${pill}">${o.status}</span></td>
+      <td style="color:var(--muted)">R$ ${o.valor.toFixed(2)}</td>
     </tr>`;
   }).join('');
-  tbody.innerHTML = rows;
+  const body=document.getElementById('tbl-body');if(body)body.innerHTML=rows;
+  const cnt=document.getElementById('tbl-count');if(cnt)cnt.textContent=`${data.length} pedidos`;
+  const foot=document.getElementById('tbl-foot');if(foot)foot.textContent=data.length>500?`Exibindo 500 de ${data.length} pedidos`:`${data.length} pedidos`;
 }
 
-function filterTable(q) {
-  const filtered = tableData.filter(o =>
-    o.id.includes(q.toUpperCase()) || o.channel.toLowerCase().includes(q.toLowerCase())
+function filterTable(q){
+  const lq=q.toLowerCase();
+  const filtered=S.tableData.filter(o=>
+    o.id.toLowerCase().includes(lq)||
+    o.channel.toLowerCase().includes(lq)||
+    o.status.includes(lq)
   );
   drawTable(filtered);
 }
 
-function sortTable(col) {
-  if (sortCol === col) sortAsc = !sortAsc;
-  else { sortCol = col; sortAsc = true; }
-  const keys = ['id','orderTime','cozinha','entrega','total','status','channel'];
-  tableData.sort((a,b) => {
-    const av = a[keys[col]], bv = b[keys[col]];
-    if (typeof av === 'number') return sortAsc ? av-bv : bv-av;
-    return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+function sortTable(col){
+  if(S.sortCol===col)S.sortAsc=!S.sortAsc;
+  else{S.sortCol=col;S.sortAsc=col==='id'||col==='orderTime'||col==='channel';}
+  S.tableData.sort((a,b)=>{
+    let av=a[col],bv=b[col];
+    if(col==='orderTime'){av=av.getTime();bv=bv.getTime();}
+    if(typeof av==='number')return S.sortAsc?av-bv:bv-av;
+    return S.sortAsc?String(av).localeCompare(String(bv)):String(bv).localeCompare(String(av));
   });
-  drawTable(tableData);
+  drawTable(S.tableData);
 }
 
-// ────────────────────────────────────────
-//  CHART HELPERS
-// ────────────────────────────────────────
-function destroyChart(id) {
-  if (state.charts[id]) { state.charts[id].destroy(); delete state.charts[id]; }
+// ── GRÁFICOS ──────────────────────────────────────────────
+function renderWd(orders){
+  const byDay={};for(let d=0;d<7;d++)byDay[d]=[];
+  orders.forEach(o=>byDay[o.weekday].push(o.total));
+  const tdWd=new Date().getDay(),mxA=Math.max(...Object.values(byDay).map(a=>avg(a)||0))||1;
+  document.getElementById('wg').innerHTML=DAYS_PT.map((d,i)=>{
+    const a=byDay[i],av=avg(a);
+    const col=av<=30?'var(--ok)':av<=45?'var(--warn)':'var(--bad)';
+    return`<div class="wc"><div class="wn ${i===tdWd?'td':''}">${d}</div><div class="wv" style="color:${col}">${av?av.toFixed(1)+'m':'—'}</div><div class="wb" style="background:${col};width:${Math.round(av/mxA*80)}%;min-width:3px"></div><div class="wct">${a.length}p</div></div>`;
+  }).join('');
 }
-
-function axisStyle() {
-  return {
-    ticks: { color:'#666', font:{ family:"'IBM Plex Mono'" , size:10 } },
-    grid: { color:'rgba(255,255,255,.05)' }
-  };
+function renderDaily(orders){
+  const bd={};
+  orders.forEach(o=>{const k=o.orderTime.toLocaleDateString('pt-BR');if(!bd[k])bd[k]={cz:[],en:[],to:[]};bd[k].cz.push(o.cozinha);bd[k].en.push(o.entrega);bd[k].to.push(o.total);});
+  const lb=Object.keys(bd).slice(-14);
+  dChart('c-daily');const ctx=document.getElementById('c-daily');if(!ctx)return;
+  S.charts['c-daily']=new Chart(ctx,{type:'line',data:{labels:lb,datasets:[
+    {label:'cozinha',data:lb.map(k=>+avg(bd[k].cz).toFixed(1)),borderColor:'#e84224',backgroundColor:'rgba(232,66,36,.07)',tension:.4,pointRadius:2},
+    {label:'entrega',data:lb.map(k=>+avg(bd[k].en).toFixed(1)),borderColor:'#f97316',backgroundColor:'rgba(249,115,22,.07)',tension:.4,pointRadius:2},
+    {label:'total',data:lb.map(k=>+avg(bd[k].to).toFixed(1)),borderColor:'#eab308',backgroundColor:'rgba(234,179,8,.08)',tension:.4,pointRadius:2,borderWidth:2},
+    {label:'meta',data:lb.map(()=>CONFIG.metaTotal),borderColor:'rgba(239,68,68,.35)',borderDash:[6,4],pointRadius:0,borderWidth:1}
+  ]},options:cOpts('minutos')});
 }
-
-function chartOpts(yLabel) {
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { labels: { color:'#888', font:{ family:"'IBM Plex Mono'", size:10 }, boxWidth:12 } },
-      tooltip: { backgroundColor:'#161616', borderColor:'#2a2a2a', borderWidth:1,
-        titleColor:'#e8e8e8', bodyColor:'#888',
-        titleFont:{ family:"'IBM Plex Mono'" }, bodyFont:{ family:"'IBM Plex Mono'", size:11 } }
-    },
-    scales: {
-      x: axisStyle(),
-      y: { ...axisStyle(), title:{ display:!!yLabel, text:yLabel, color:'#666',
-        font:{ family:"'IBM Plex Mono'", size:10 } } }
-    }
-  };
+function renderHist(orders){
+  const bins=[],lb=[];
+  for(let i=10;i<=65;i+=5){lb.push(`${i}-${i+4}`);bins.push(orders.filter(o=>o.total>=i&&o.total<i+5).length);}
+  const cols=lb.map((_,i)=>{const v=10+i*5;return v<=30?'rgba(34,197,94,.75)':v<=45?'rgba(245,158,11,.75)':'rgba(239,68,68,.75)';});
+  dChart('c-hist');const ctx=document.getElementById('c-hist');if(!ctx)return;
+  S.charts['c-hist']=new Chart(ctx,{type:'bar',data:{labels:lb,datasets:[{label:'pedidos',data:bins,backgroundColor:cols,borderRadius:2}]},options:{...cOpts('pedidos'),plugins:{...cOpts().plugins,legend:{display:false}}}});
 }
-
-// ════════════════════════════════════════
-//  LOAD DEMO
-// ════════════════════════════════════════
-function loadDemoData() {
-  state.orders = generateDemo();
-  state.isLive = false;
-  document.getElementById('api-badge').textContent = '● DEMO';
-  document.getElementById('api-badge').className = 'api-badge demo';
-  render();
-}
-
-// ════════════════════════════════════════
-//  FETCH REAL (Saipos API)
-// ════════════════════════════════════════
-async function fetchRealData() {
-  const baseUrl = document.getElementById('inp-url').value.trim().replace(/\/$/,'');
-  const token   = document.getElementById('inp-token').value.trim();
-  const storeId = document.getElementById('inp-store').value.trim();
-
-  if (!token) { alert('Informe o Bearer Token Saipos'); return; }
-  if (!storeId) { alert('Informe o Store ID da loja'); return; }
-
-  document.getElementById('api-badge').innerHTML = '<span class="spinner"></span> TESTANDO...';
-  document.getElementById('api-badge').className = 'api-badge demo';
-
-  try {
-    const since = new Date();
-    since.setDate(since.getDate() - 28);
-    
-    // API DE DADOS Saipos (https://saipos-data-api.readme.io)
-    // URL Base: https://data.saipos.io/v1
-    // Endpoint: /orders
-    // Autenticação: Bearer Token (JWT)
-    let url = `${baseUrl}/orders`;
-    console.log(`[Saipos Data API] URL: ${url}`);
-    console.log(`[Saipos Data API] Store ID: ${storeId}`);
-    
-    const resp = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-Store-Id': storeId
-      }
-    });
-
-    console.log(`[Saipos Data API] Status HTTP: ${resp.status}`);
-    
-    if (resp.status === 401) {
-      throw new Error('❌ TOKEN INVÁLIDO ou EXPIRADO\n\n✓ Copie novamente do Menu > Canais de Vendas e Integrações > API DE DADOS\n✓ Tokens têm data de validade');
-    }
-    if (resp.status === 403) {
-      throw new Error('❌ ACESSO NEGADO\n\n✓ Sua conta pode não ter permissão para API de Dados\n✓ Contate suporte@saipos.com');
-    }
-    if (resp.status === 404) {
-      throw new Error('❌ ENDPOINT NÃO ENCONTRADO\n\n✓ URL base correta: https://data.saipos.io/v1\n✓ Endpoint: /orders');
-    }
-    if (!resp.ok) {
-      const txt = await resp.text();
-      console.error('[Saipos Data API] Response text:', txt);
-      throw new Error(`HTTP ${resp.status}\n\n${txt.substring(0,300)}`);
-    }
-    
-    const json = await resp.json();
-    console.log('[Saipos Data API] Response:', json);
-    
-    const raw = json.orders ?? json.data ?? json ?? [];
-    state.orders = (Array.isArray(raw) ? raw : [raw])
-      .map(mapSaiposOrder)
-      .filter(Boolean);
-
-    if (!state.orders.length) {
-      throw new Error('⚠️ Sem pedidos retornados\n\n✓ Verifique se há pedidos nos últimos 28 dias\n✓ Tente ampliar o período (clique em "MÊS")');
-    }
-
-    state.isLive = true;
-    document.getElementById('api-badge').textContent = '● LIVE';
-    document.getElementById('api-badge').className = 'api-badge live';
-    console.log(`[Saipos Data API] ✓ ${state.orders.length} pedidos carregados com sucesso!`);
-    render();
-
-  } catch (err) {
-    console.error('[Saipos Data API Error]', err);
-    document.getElementById('api-badge').textContent = '● ERRO';
-    document.getElementById('api-badge').className = 'api-badge demo';
-    alert(`⚠️ ERRO NA API DE DADOS\n\n${err.message}\n\nDica: Abra DevTools (F12) → Console para mais detalhes.\nCarregando DEMO...`);
-    loadDemoData();
+function renderCmp(){
+  const d=S.cmpDay,now=new Date(),cols=['#e84224','#f97316','#eab308','#3b82f6'],ds=[];
+  for(let w=0;w<4;w++){
+    const tgt=new Date(now);tgt.setDate(now.getDate()-now.getDay()-w*7+d);tgt.setHours(0,0,0,0);
+    const nxt=new Date(tgt);nxt.setDate(tgt.getDate()+1);
+    const day=S.orders.filter(o=>o.orderTime>=tgt&&o.orderTime<nxt);
+    const byH={};day.forEach(o=>{if(!byH[o.hour])byH[o.hour]=[];byH[o.hour].push(o.total);});
+    ds.push({label:tgt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}),data:Array.from({length:14},(_,i)=>byH[i+10]?+avg(byH[i+10]).toFixed(1):null),borderColor:cols[w],backgroundColor:'transparent',tension:.4,pointRadius:2,spanGaps:true});
   }
+  const sub=document.getElementById('csub');
+  if(sub)sub.textContent=`${DAYS_FULL[d].toLowerCase()} × 4 semanas — tempo total médio por hora`;
+  dChart('c-cmp');const ctx=document.getElementById('c-cmp');if(!ctx)return;
+  S.charts['c-cmp']=new Chart(ctx,{type:'line',data:{labels:Array.from({length:14},(_,i)=>`${i+10}h`),datasets:ds},options:cOpts('min')});
+}
+function renderPct(orders){
+  const byDay=DAYS_PT.map((_,i)=>orders.filter(o=>o.weekday===i).map(o=>o.total));
+  dChart('c-pct');const ctx=document.getElementById('c-pct');if(!ctx)return;
+  S.charts['c-pct']=new Chart(ctx,{type:'bar',data:{labels:DAYS_PT,datasets:[
+    {label:'p25',data:byDay.map(a=>Math.round(pct(a,25))),backgroundColor:'rgba(59,130,246,.3)',stack:'s'},
+    {label:'mediana',data:byDay.map(a=>Math.round(med(a))-Math.round(pct(a,25))),backgroundColor:'rgba(234,179,8,.75)',stack:'s'},
+    {label:'p75',data:byDay.map(a=>Math.round(pct(a,75))-Math.round(med(a))),backgroundColor:'rgba(249,115,22,.4)',stack:'s'},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#555',font:{size:10},boxWidth:10}}},scales:{x:{stacked:true,ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},y:{stacked:true,ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}}}}});
+}
+function renderHeatmap(orders){
+  const mx={};DAYS_PT.forEach((_,di)=>{mx[di]={};for(let h=10;h<=23;h++)mx[di][h]=[];});
+  orders.forEach(o=>{if(mx[o.weekday]&&o.hour>=10&&o.hour<=23)mx[o.weekday][o.hour].push(o.total);});
+  let gm=0;Object.values(mx).forEach(row=>Object.values(row).forEach(a=>{const av=avg(a);if(av>gm)gm=av;}));
+  const hrs=Array.from({length:14},(_,i)=>i+10);
+  let h=`<div style="display:grid;grid-template-columns:auto repeat(14,1fr);gap:2px">`;
+  h+=`<div></div>${hrs.map(hr=>`<div class="hmh">${hr}h</div>`).join('')}`;
+  DAYS_PT.forEach((day,di)=>{
+    h+=`<div class="hmr">${day}</div>`;
+    hrs.forEach(hr=>{
+      const vals=mx[di][hr],a=avg(vals);
+      const p=gm?a/gm:0;
+      const bg=!vals.length?'rgba(255,255,255,.03)':`rgb(${Math.round(50+p*200)},${Math.round(197-p*170)},${Math.round(94-p*80)})`;
+      h+=`<div class="hmc" style="background:${bg}" title="${vals.length?`${day} ${hr}h — ${a.toFixed(1)}min (${vals.length}p)`:'sem dados'}"></div>`;
+    });
+  });
+  h+='</div>';
+  const el=document.getElementById('hm');if(el)el.innerHTML=h;
 }
 
-// Mapeador de pedido Saipos → formato interno
-// Adapte os campos conforme a resposta real da sua API
-function mapSaiposOrder(raw) {
-  try {
-    // timestamps esperados: created_at, kitchen_dispatched_at, delivered_at
-    const created     = new Date(raw.created_at || raw.createdAt);
-    const kitchenDone = new Date(raw.kitchen_dispatched_at || raw.kitchenDispatchedAt || raw.prepared_at);
-    const delivered   = new Date(raw.delivered_at || raw.deliveredAt || raw.finished_at);
-
-    if (isNaN(created) || isNaN(delivered)) return null;
-
-    const cozinha = isNaN(kitchenDone) ? 18 :
-      Math.round((kitchenDone - created) / 60000);
-    const entrega = isNaN(kitchenDone) ?
-      Math.round((delivered - created) / 60000) - cozinha :
-      Math.round((delivered - kitchenDone) / 60000);
-    const total = Math.round((delivered - created) / 60000);
-
-    if (cozinha < 1 || entrega < 1 || total < 5) return null;
-
-    const channels = { IFOOD:'iFood', WHATSAPP:'WhatsApp', OWN_APP:'App Próprio',
-                       PHONE:'Telefone', RAPPI:'Rappi' };
-    const ch = channels[raw.sales_channel] || raw.sales_channel || 'Outro';
-
-    return {
-      id: raw.id || raw.order_id || `R${Math.random()}`,
-      orderTime: created,
-      weekday: created.getDay(),
-      hour: created.getHours(),
-      cozinha: Math.max(1, cozinha),
-      entrega: Math.max(1, entrega),
-      total: Math.max(5, total),
-      channel: ch,
-      status: total <= 30 ? 'EXCELENTE' : total <= 45 ? 'OK' : 'CRÍTICO'
-    };
-  } catch { return null; }
-}
-
-// ════════════════════════════════════════
-//  INIT
-// ════════════════════════════════════════
-loadDemoData();
+loadDemo();
 </script>
 </body>
 </html>
