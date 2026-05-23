@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bonità Pizzaria · Sistema Operacional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Nunito+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+/* ── BRAND TOKENS ── */
+:root {
+  --red:    #D6453D;
+  --green:  #024D34;
+  --cream:  #FFF0D6;
+  --blue:   #A3CBD9;
+  --red-dark:   #B53830;
+  --green-mid:  #0A7A52;
+  --green-pale: #E5F2EC;
+  --text:   #1A1A1A;
+  --muted:  rgba(255,240,214,0.6);
+}
+
+/* ── RESET ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Nunito Sans', sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+/* ── CHECKERBOARD pattern ── */
+.checker {
+  background-image:
+    linear-gradient(45deg, var(--red) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--red) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--red) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--red) 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 0 7px, 7px -7px, -7px 0px;
+  background-color: var(--cream);
+}
+.checker-green {
+  background-image:
+    linear-gradient(45deg, var(--cream) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--cream) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--cream) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--cream) 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 0 7px, 7px -7px, -7px 0px;
+  background-color: var(--green);
+}
+
+/* ── HERO ── */
+.hero {
+  background: var(--green);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Checker strips decorativos */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 12px;
+  background-image:
+    linear-gradient(45deg, var(--red) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--red) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--red) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--red) 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
+  background-color: var(--cream);
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 12px;
+  background-image:
+    linear-gradient(45deg, var(--red) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--red) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--red) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--red) 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
+  background-color: var(--cream);
+}
+
+/* Blocos checker laterais (como na apresentação) */
+.hero-checker-left, .hero-checker-right {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 120px;
+  height: 340px;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(45deg, var(--cream) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--cream) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--cream) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--cream) 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  background-color: var(--green);
+}
+.hero-checker-left { left: 0; }
+.hero-checker-right { right: 0; }
+
+.hero-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 48px;
+  position: relative;
+  z-index: 10;
+}
+.nav-logo {
+  font-family: 'Nunito', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--cream);
+  opacity: 0.5;
+}
+.nav-badge {
+  background: rgba(255,240,214,0.12);
+  border: 1px solid rgba(255,240,214,0.2);
+  color: var(--cream);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+
+.hero-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 48px 80px;
+  position: relative;
+  z-index: 5;
+}
+
+/* SVG Logo Bonità inline */
+.hero-logo-svg {
+  width: 320px;
+  max-width: 80vw;
+  margin-bottom: 20px;
+  animation: fadeUp 0.8s ease both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.hero-tagline {
+  font-family: 'Nunito Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 56px;
+  animation: fadeUp 0.8s 0.1s ease both;
+}
+
+.hero-cards {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: fadeUp 0.8s 0.2s ease both;
+}
+
+.hero-card {
+  background: rgba(255,240,214,0.07);
+  border: 1px solid rgba(255,240,214,0.15);
+  border-radius: 16px;
+  padding: 28px 32px;
+  width: 260px;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.hero-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--red);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s;
+}
+.hero-card:hover {
+  background: rgba(255,240,214,0.13);
+  border-color: rgba(255,240,214,0.3);
+  transform: translateY(-4px);
+}
+.hero-card:hover::before { transform: scaleX(1); }
+
+.card-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  margin-bottom: 16px;
+}
+.card-icon.red   { background: rgba(214,69,61,0.2); }
+.card-icon.blue  { background: rgba(163,203,217,0.2); }
+.card-icon.cream { background: rgba(255,240,214,0.15); }
+
+.card-title {
+  font-family: 'Nunito', sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--cream);
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+.card-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.card-arrow {
+  position: absolute;
+  bottom: 20px; right: 20px;
+  color: var(--red);
+  font-size: 18px;
+  transition: transform 0.2s;
+}
+.hero-card:hover .card-arrow { transform: translateX(4px); }
+
+.card-tag {
+  display: inline-block;
+  background: var(--red);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+.card-tag.new { background: #0A7A52; }
+
+/* ── SEÇÃO: O SISTEMA ── */
+.section {
+  padding: 88px 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-family: 'Nunito', sans-serif;
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--green);
+  line-height: 1.1;
+  margin-bottom: 20px;
+}
+.section-title span { color: var(--red); }
+
+.section-lead {
+  font-size: 16px;
+  font-weight: 300;
+  color: #555;
+  max-width: 560px;
+  line-height: 1.8;
+  margin-bottom: 52px;
+}
+
+/* ── GRID MÓDULOS ── */
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.module-card {
+  background: white;
+  border: 1px solid #EDE9E0;
+  border-radius: 16px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.module-card:hover {
+  box-shadow: 0 12px 40px rgba(2,77,52,0.1);
+  transform: translateY(-3px);
+}
+.module-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 4px;
+  border-radius: 0 0 16px 16px;
+}
+.module-card.m-red::after   { background: var(--red); }
+.module-card.m-green::after { background: var(--green); }
+.module-card.m-blue::after  { background: var(--blue); }
+
+.module-num {
+  font-family: 'Nunito', sans-serif;
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 14px;
+  opacity: 0.08;
+  color: var(--green);
+}
+.module-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+.module-title {
+  font-family: 'Nunito', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--green);
+  margin-bottom: 8px;
+}
+.module-desc {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* ── BANNER PIZZA METRICS ── */
+.banner-pm {
+  background: var(--green);
+  border-radius: 24px;
+  padding: 52px 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+  margin: 0 48px 40px;
+  position: relative;
+  overflow: hidden;
+}
+.banner-pm::before {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 240px;
+  background-image:
+    linear-gradient(45deg, rgba(255,240,214,0.08) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,240,214,0.08) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,240,214,0.08) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,240,214,0.08) 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0px;
+  background-color: var(--green);
+}
+.banner-left { flex: 1; position: relative; z-index: 2; }
+.banner-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(255,240,214,0.5);
+  margin-bottom: 10px;
+}
+.banner-title {
+  font-family: 'Nunito', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--cream);
+  line-height: 1.15;
+  margin-bottom: 14px;
+}
+.banner-desc {
+  font-size: 14px;
+  color: rgba(255,240,214,0.65);
+  line-height: 1.7;
+  max-width: 420px;
+  margin-bottom: 28px;
+}
+.banner-stats {
+  display: flex;
+  gap: 32px;
+}
+.stat {
+  text-align: left;
+}
+.stat-value {
+  font-family: 'Nunito', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--cream);
+  line-height: 1;
+}
+.stat-label {
+  font-size: 11px;
+  color: rgba(255,240,214,0.5);
+  margin-top: 3px;
+}
+.banner-right {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.btn-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border-radius: 10px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+}
+.btn-banner.primary {
+  background: var(--red);
+  color: white;
+}
+.btn-banner.primary:hover { background: var(--red-dark); transform: translateY(-2px); }
+.btn-banner.secondary {
+  background: rgba(255,240,214,0.1);
+  color: var(--cream);
+  border: 1px solid rgba(255,240,214,0.2);
+}
+.btn-banner.secondary:hover { background: rgba(255,240,214,0.18); }
+
+/* ── BANNER GESTÃO ── */
+.banner-gestao {
+  background: var(--red);
+  border-radius: 24px;
+  padding: 52px 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+  margin: 0 48px 88px;
+  position: relative;
+  overflow: hidden;
+}
+.banner-gestao::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 200px;
+  background-image:
+    linear-gradient(45deg, rgba(255,240,214,0.1) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,240,214,0.1) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,240,214,0.1) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,240,214,0.1) 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0px;
+  background-color: var(--red);
+}
+.banner-gestao .banner-left { z-index: 2; }
+.banner-gestao .banner-title { color: white; }
+.banner-gestao .banner-eyebrow { color: rgba(255,255,255,0.5); }
+.banner-gestao .banner-desc { color: rgba(255,255,255,0.7); }
+.banner-gestao .stat-value { color: white; }
+.banner-gestao .stat-label { color: rgba(255,255,255,0.5); }
+.btn-banner.gestao-primary {
+  background: var(--green);
+  color: var(--cream);
+}
+.btn-banner.gestao-primary:hover { background: #013d28; transform: translateY(-2px); }
+.btn-banner.gestao-secondary {
+  background: rgba(255,255,255,0.12);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.btn-banner.gestao-secondary:hover { background: rgba(255,255,255,0.2); }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--green);
+  padding: 40px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+footer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 8px;
+  background-image:
+    linear-gradient(45deg, var(--red) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--red) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--red) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--red) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+  background-color: var(--cream);
+}
+.footer-brand {
+  font-family: 'Nunito', sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--cream);
+}
+.footer-brand span { color: var(--red); }
+.footer-text {
+  font-size: 12px;
+  color: rgba(255,240,214,0.4);
+}
+
+/* ── DIVIDER com checker ── */
+.checker-divider {
+  height: 24px;
+  background-image:
+    linear-gradient(45deg, var(--red) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--red) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--red) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--red) 75%);
+  background-size: 24px 24px;
+  background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+  background-color: var(--cream);
+}
+
+/* ── STATUS PILLS ── */
+.status-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.pill-green { background: #E5F2EC; color: var(--green); }
+.pill-red   { background: #FDECEA; color: var(--red-dark); }
+.pill-blue  { background: #E8F4F8; color: #1A6B82; }
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ── ANIMATIONS ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s, transform 0.6s;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 900px) {
+  .hero-nav { padding: 16px 24px; }
+  .hero-body { padding: 40px 24px 60px; }
+  .hero-cards { flex-direction: column; align-items: center; }
+  .hero-card { width: 100%; max-width: 320px; }
+  .section { padding: 60px 24px; }
+  .modules-grid { grid-template-columns: 1fr; }
+  .banner-pm, .banner-gestao { flex-direction: column; margin: 0 24px 32px; padding: 36px 28px; }
+  .banner-pm::before, .banner-gestao::before { display: none; }
+  .section-title { font-size: 30px; }
+  footer { flex-direction: column; gap: 12px; text-align: center; padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════ HERO ════ -->
+<section class="hero">
+  <div class="hero-checker-left"></div>
+  <div class="hero-checker-right"></div>
+
+  <nav class="hero-nav">
+    <div class="nav-logo">Bonità Pizzaria · Penápolis — SP</div>
+    <div class="nav-badge">Sistema Operacional</div>
+  </nav>
+
+  <div class="hero-body">
+    <!-- Logo SVG inline baseado na identidade real -->
+    <svg class="hero-logo-svg" viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- "bonità" em tipografia arredondada inspirada na marca -->
+      <!-- b -->
+      <text x="0" y="72" font-family="'Nunito', sans-serif" font-weight="900" font-size="80" fill="#FFF0D6">b</text>
+      <!-- o com pizza dentro — círculo + fatia -->
+      <circle cx="97" cy="42" r="28" fill="#FFF0D6"/>
+      <!-- fatia de pizza dentro do o -->
+      <polygon points="97,20 118,58 76,58" fill="#024D34"/>
+      <circle cx="88" cy="46" r="4" fill="#D6453D"/>
+      <circle cx="100" cy="38" r="3" fill="#D6453D"/>
+      <circle cx="106" cy="52" r="2.5" fill="#D6453D"/>
+      <!-- borda da pizza (arco superior) -->
+      <path d="M80 30 Q97 18 114 30" stroke="#FFF0D6" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <!-- n -->
+      <text x="130" y="72" font-family="'Nunito', sans-serif" font-weight="900" font-size="80" fill="#FFF0D6">n</text>
+      <!-- i -->
+      <text x="194" y="72" font-family="'Nunito', sans-serif" font-weight="900" font-size="80" fill="#FFF0D6">i</text>
+      <!-- ponto do i em vermelho -->
+      <circle cx="207" cy="8" r="6" fill="#D6453D"/>
+      <!-- t -->
+      <text x="216" y="72" font-family="'Nunito', sans-serif" font-weight="900" font-size="80" fill="#FFF0D6">t</text>
+      <!-- à com acento de luva -->
+      <text x="244" y="72" font-family="'Nunito', sans-serif" font-weight="900" font-size="80" fill="#FFF0D6">à</text>
+      <!-- acento da luva em vermelho por cima -->
+      <path d="M278 6 L288 18 L282 16" stroke="#D6453D" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+
+    <p class="hero-tagline">Pizzaria · Penápolis, SP</p>
+
+    <div class="hero-cards">
+      <a class="hero-card" href="https://rafaelvgl.github.io/bonitapizzaria/" target="_blank">
+        <div class="card-tag">Ativo</div>
+        <div class="card-icon red">⏱</div>
+        <div class="card-title">Pizza Metrics</div>
+        <div class="card-desc">Análise de tempos de cozinha e entrega. KPIs de SLA, heatmap de pedidos e comparativo semanal.</div>
+        <span class="card-arrow">→</span>
+      </a>
+
+      <a class="hero-card" href="./gestao.html" target="_blank">
+        <div class="card-tag new">Novo</div>
+        <div class="card-icon cream">📊</div>
+        <div class="card-title">Gestão Operacional</div>
+        <div class="card-desc">Estoque, projeção de vendas com IA, mapa de cocção semanal e lista de compras automática.</div>
+        <span class="card-arrow">→</span>
+      </a>
+
+      <div class="hero-card" style="opacity:0.45; cursor:default">
+        <div class="card-tag" style="background:#555">Em breve</div>
+        <div class="card-icon blue">📱</div>
+        <div class="card-title">Marketing Hub</div>
+        <div class="card-desc">Calendário de conteúdo, geração de posts e campanhas para mid-week e fim de semana.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Checker divider -->
+<div class="checker-divider"></div>
+
+<!-- ════ SEÇÃO: O SISTEMA ════ -->
+<section class="section reveal">
+  <div class="section-label">Visão geral</div>
+  <h2 class="section-title">Feito para quem faz<br><span>bem-feito todo dia</span></h2>
+  <p class="section-lead">Um ecossistema de ferramentas operacionais construído especificamente para a Bonità. Dados reais do Saipos, receitas reais da cozinha, inteligência real.</p>
+
+  <div class="status-row">
+    <span class="pill pill-green"><span class="pill-dot"></span>39 sabores mapeados</span>
+    <span class="pill pill-green"><span class="pill-dot"></span>77 fichas técnicas</span>
+    <span class="pill pill-green"><span class="pill-dot"></span>Saipos conectado</span>
+    <span class="pill pill-blue"><span class="pill-dot"></span>IA Anthropic integrada</span>
+    <span class="pill pill-red"><span class="pill-dot"></span>30 itens críticos no estoque</span>
+  </div>
+
+  <div class="modules-grid">
+    <div class="module-card m-red">
+      <div class="module-num">01</div>
+      <span class="module-icon">📈</span>
+      <div class="module-title">Projeção de Vendas com IA</div>
+      <div class="module-desc">Análise do histórico Saipos com fatores de feriados, 5° dia útil e ajuste manual de ±% para a semana.</div>
+    </div>
+    <div class="module-card m-green">
+      <div class="module-num">02</div>
+      <span class="module-icon">📦</span>
+      <div class="module-title">Controle de Estoque</div>
+      <div class="module-desc">Importação via PDF ou Excel. Cruzamento automático com as 77 fichas técnicas e projeção de consumo 7 dias.</div>
+    </div>
+    <div class="module-card m-blue">
+      <div class="module-num">03</div>
+      <span class="module-icon">🍳</span>
+      <div class="module-title">Mapa de Cocção</div>
+      <div class="module-desc">Agenda semanal dos 20 preparados otimizada para o menor número de sessões, respeitando a validade de cada item.</div>
+    </div>
+    <div class="module-card m-green">
+      <div class="module-num">04</div>
+      <span class="module-icon">🛒</span>
+      <div class="module-title">Lista de Compras</div>
+      <div class="module-desc">Geração automática separada por Bispo/Mega G e hortifruti. Cronograma de compras com mínimo de visitas por semana.</div>
+    </div>
+    <div class="module-card m-red">
+      <div class="module-num">05</div>
+      <span class="module-icon">⏱</span>
+      <div class="module-title">Pizza Metrics</div>
+      <div class="module-desc">Tempos de cozinha e entrega em tempo real. SLA por faixa horária, comparativo dia da semana e heatmap de demanda.</div>
+    </div>
+    <div class="module-card m-blue" style="opacity:0.5">
+      <div class="module-num">06</div>
+      <span class="module-icon">📱</span>
+      <div class="module-title">Marketing Hub <span style="font-size:10px;background:#ddd;padding:2px 6px;border-radius:4px;color:#666;font-weight:600;vertical-align:middle">em breve</span></div>
+      <div class="module-desc">Calendário editorial, templates de stories e campanhas mid-week integradas com a estratégia da marca.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ BANNER PIZZA METRICS ════ -->
+<div class="banner-pm reveal">
+  <div class="banner-left">
+    <div class="banner-eyebrow">Módulo 1 · Pizza Metrics</div>
+    <h3 class="banner-title">Quanto tempo<br>sua cozinha leva?</h3>
+    <p class="banner-desc">Análise completa de tempos de produção e entrega conectada direto ao Saipos via proxy Google Apps Script. SLA por dia, hora e comparativo entre semanas.</p>
+    <div class="banner-stats">
+      <div class="stat">
+        <div class="stat-value">15 min</div>
+        <div class="stat-label">meta de entrega</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">20 min</div>
+        <div class="stat-label">meta de cozinha</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">45 min</div>
+        <div class="stat-label">SLA total</div>
+      </div>
+    </div>
+  </div>
+  <div class="banner-right">
+    <a href="https://rafaelvgl.github.io/bonitapizzaria/" target="_blank" class="btn-banner primary">
+      Abrir Pizza Metrics →
+    </a>
+    <a href="https://rafaelvgl.github.io/bonitapizzaria/" target="_blank" class="btn-banner secondary">
+      Ver dados de hoje
+    </a>
+  </div>
+</div>
+
+<!-- ════ BANNER GESTÃO ════ -->
+<div class="banner-gestao reveal">
+  <div class="banner-left">
+    <div class="banner-eyebrow">Módulo 2 · Gestão Operacional</div>
+    <h3 class="banner-title">Tudo que a cozinha<br>precisa para a semana</h3>
+    <p class="banner-desc">39 sabores, 77 fichas técnicas, estoque real de 22/05 e projeção de demanda por IA. Lista de compras gerada automaticamente para Bispo, Mega G e hortifruti.</p>
+    <div class="banner-stats">
+      <div class="stat">
+        <div class="stat-value">39</div>
+        <div class="stat-label">sabores mapeados</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">20</div>
+        <div class="stat-label">preparados</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">30</div>
+        <div class="stat-label">itens críticos</div>
+      </div>
+    </div>
+  </div>
+  <div class="banner-right">
+    <a href="./gestao.html" target="_blank" class="btn-banner gestao-primary">
+      Abrir Gestão Operacional →
+    </a>
+    <a href="./gestao.html" target="_blank" class="btn-banner gestao-secondary">
+      Ver estoque de hoje
+    </a>
+  </div>
+</div>
+
+<!-- ════ FOOTER ════ -->
+<footer>
+  <div class="footer-brand">bonità<span>.</span></div>
+  <div class="footer-text">Sistema Operacional · Penápolis, SP · 2026</div>
+</footer>
+
+<script>
+// Scroll reveal
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
