@@ -461,9 +461,7 @@ function mapOrder(r,histMap){
       if(!cz&&!en){cz=20;ag=5;en=tipo===1?15:0;}
     }
 
-    // Entrega = Aguardando + Saiu para entrega
-    const enTotal=ag+en;
-    const tot=cz+enTotal;
+    const tot=cz+ag+en;
     if(tot<1) return null;
 
     // Entregador
@@ -480,11 +478,10 @@ function mapOrder(r,histMap){
     return{
       id:`#${r.sale_number||r.id_sale}`,
       orderTime:created,weekday:created.getDay(),hour:created.getHours(),
-      cozinha:   Math.max(0,cz),       // Montagem
-      aguardando:Math.max(0,ag),       // Aguardando entrega (pizza pronta)
-      entrega:   Math.max(0,en),       // Saiu para entrega (motoboy na rua)
-      entregaTotal:Math.max(0,enTotal),// aguardando + saiu (tempo total de entrega)
-      total:     Math.max(1,tot),      // cozinha + entregaTotal
+      cozinha:   Math.max(0,cz),   // Montagem (na cozinha)
+      aguardando:Math.max(0,ag),   // Aguardando entrega (pizza pronta, esperando motoboy)
+      entrega:   Math.max(0,en),   // Saiu para entrega (motoboy na rua) ← tempo real de entrega
+      total:     Math.max(1,tot),  // cozinha + aguardando + saiu para entrega
       tipo,tipoLabel:TIPO_LABELS[tipo]||'Outro',
       channel,entregador,
       valor:parseFloat(r.total_amount||0),
@@ -514,8 +511,8 @@ function renderDelivery(orders){
   if(!orders.length){el.innerHTML='<div class="stmsg">nenhum pedido de delivery no período</div>';return;}
 
   const cz=orders.map(o=>o.cozinha),ag=orders.map(o=>o.aguardando),
-        en=orders.map(o=>o.entrega),enT=orders.map(o=>o.entregaTotal),to=orders.map(o=>o.total);
-  const aC=avg(cz),aAg=avg(ag),aE=avg(en),aET=avg(enT),aT=avg(to);
+        en=orders.map(o=>o.entrega),to=orders.map(o=>o.total);
+  const aC=avg(cz),aAg=avg(ag),aE=avg(en),aT=avg(to);
   const s30=orders.filter(o=>o.total<=30).length/orders.length*100;
   const s45=orders.filter(o=>o.total>30&&o.total<=45).length/orders.length*100;
   const sBad=orders.filter(o=>o.total>45).length/orders.length*100;
@@ -526,7 +523,7 @@ function renderDelivery(orders){
   <div class="krow">
     <div class="kc r">${dtag(aC,CONFIG.metaCozinha)}<div class="kl">MONTAGEM (MÉDIA)</div><div class="kv" style="color:var(--accent)">${aC.toFixed(1)}</div><div class="ku">min · meta ${CONFIG.metaCozinha}min</div></div>
     <div class="kc p">${dtag(aAg,5)}<div class="kl">AG. ENTREGA (MÉDIA)</div><div class="kv" style="color:var(--purple)">${aAg.toFixed(1)}</div><div class="ku">min · pizza pronta/esperando</div></div>
-    <div class="kc o">${dtag(aET,CONFIG.metaEntrega)}<div class="kl">ENTREGA (MÉDIA)</div><div class="kv" style="color:var(--accent2)">${aET.toFixed(1)}</div><div class="ku">min · ag.+rua · meta ${CONFIG.metaEntrega}min</div></div>
+    <div class="kc o">${dtag(aE,CONFIG.metaEntrega)}<div class="kl">SAIU P/ ENTREGA (MÉD.)</div><div class="kv" style="color:var(--accent2)">${aE.toFixed(1)}</div><div class="ku">min · motoboy na rua · meta ${CONFIG.metaEntrega}min</div></div>
     <div class="kc g2">${dtag(aT,CONFIG.metaTotal)}<div class="kl">TOTAL (MÉDIA)</div><div class="kv" style="color:var(--gold)">${aT.toFixed(1)}</div><div class="ku">min · meta ${CONFIG.metaTotal}min</div></div>
     <div class="kc gn"><div class="kl">PEDIDOS DELIVERY</div><div class="kv" style="color:var(--ok)">${orders.length}</div><div class="ku">no período</div></div>
     <div class="kc b"><div class="kl">SLA ≤ 45MIN</div><div class="kv" style="color:var(--blue)">${(s30+s45).toFixed(1)}%</div><div class="ku">dentro do prazo</div></div>
@@ -790,7 +787,7 @@ function renderPedidos(orders){
           <th onclick="sortTable('tipoLabel')">TIPO</th>
           <th onclick="sortTable('cozinha')">🍕 MONTAGEM</th>
           <th onclick="sortTable('aguardando')">⏳ AG.ENTREGA</th>
-          <th onclick="sortTable('entregaTotal')">🛵 ENTREGA</th>
+          <th onclick="sortTable('entrega')">🛵 SAIU/ENTREGA</th>
           <th onclick="sortTable('total')">⏱ TOTAL ↓</th>
           <th onclick="sortTable('entregador')">ENTREGADOR</th>
           <th onclick="sortTable('channel')">CANAL</th>
@@ -816,7 +813,7 @@ function drawTable(data){
       <td><span style="color:${TIPO_COLORS[o.tipo]||'var(--muted)'}">${o.tipoLabel}</span></td>
       <td style="color:var(--accent)">${o.cozinha}m</td>
       <td style="color:var(--purple)">${o.aguardando}m</td>
-      <td style="color:var(--accent2)">${o.entregaTotal}m</td>
+      <td style="color:var(--accent2)">${o.entrega}m</td>
       <td><strong style="color:${col}">${o.total}m</strong><span class="t-bar" style="width:${bw}px;background:${col};opacity:.35"></span></td>
       <td style="color:var(--muted)">${o.entregador}</td>
       <td style="color:var(--muted)">${o.channel}</td>
